@@ -12,6 +12,7 @@ import re
 import sys
 import threading
 import time
+import webbrowser
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -67,6 +68,48 @@ def http_laheta(ip, portti, kayttaja, salasana, komennot, viive=0.5):
 
 
 # --------------------------------------------------------------------- sovellus
+
+VERSIO = '1.2.0'
+REPO_URL = 'https://github.com/nousiainenlassi-afk/propilkki-admin-tool'
+
+OHJE = [
+    ('h', 'Pikaohje'),
+    ('p', '1. Kirjoita hostin IP-osoite ja portti. Portti on sama, jolla hostin info-sivu '
+          'aukeaa selaimessa (esim. http://osoite:4500/).'),
+    ('p', '2. Kirjoita admin-salasana. Silmäpainike näyttää salasanan niin kauan kuin pidät '
+          'hiiren painiketta pohjassa. Salasanaa ei tallenneta levylle.'),
+    ('p', '3. Valitse vesistö, vuodenaika, vuorokaudenaika, kesto, pelimuoto ja aloituspaikka.'),
+    ('p', '4. Paina Lähetä hostille. Komennot näkyvät Komennot-ruudussa ennen lähetystä, ja '
+          'Kopioi vie ne leikepöydälle.'),
+    ('h', 'Painikkeet'),
+    ('p', 'Lähetä hostille: lähettää /lake- ja /game-komennot, eli seuraavan kisan vesistön ja '
+          'pelimuodon. Ne tulevat voimaan seuraavassa kisassa.'),
+    ('p', 'Käynnistä (/start) ja Pysäytä (/stop): käynnistää tai pysäyttää kisat.'),
+    ('p', 'Autohost ON / OFF: kytkee hostin automaattiajon päälle tai pois.'),
+    ('p', 'Lähetä vieheet ja väliajat: lähettää /lures- ja /results-komennot. Oma valinta '
+          'avaa kuvavalitsimen, jossa voit valita vieheet yksitellen.'),
+    ('h', 'Seuranta'),
+    ('p', 'Oikealla näkyy hostin tila: onko kisa käynnissä ja paljonko aikaa on jäljellä, vai '
+          'onko host lobbyssa odottamassa seuraavan kisan alkua. Lisäksi näkyvät vesistö, '
+          'pelimuoto ja pelaajat.'),
+    ('p', 'Hostin loki näyttää lähetetyt komennot ja, kun admin-salasana on annettu, hostin '
+          'chatin tapahtumat (esim. vastauksen komentoon). Chatin seurannan voi kytkeä pois.'),
+    ('p', 'Vihreä pallo = yhteys OK. Punainen pallo = ei yhteyttä.'),
+    ('h', 'Hyvä tietää'),
+    ('p', 'Yöllä pelattavat vain yövesistöt, ja yöllä pelimuotoina ovat made, kolme suurinta ja '
+          'viisi suurinta kalaa. Made-kisat pelataan vain yöllä.'),
+    ('p', 'Hiiren rulla vierittää aina vesistölistaa, joten muut asetukset eivät vaihdu '
+          'vahingossa.'),
+    ('p', 'Vieheiden ja väliaikatulosten valinta säilyy seuraavaan käynnistykseen. IP, portti '
+          'ja salasana eivät tallennu.'),
+    ('h', 'Ongelmatilanteita'),
+    ('p', 'Punainen pallo: tarkista IP ja portti, että host on käynnissä, ja että portti on '
+          'avattu reitittimestä ja palomuurista. Oman verkon sisältä oman WAN-osoitteen '
+          'käyttö ei aina toimi; käytä silloin koneen sisäverkon osoitetta.'),
+    ('p', 'Lähetys hylätään (401): admin-salasana on väärin.'),
+    ('p', 'Host ei vastaa lainkaan, vaikka osoite on oikein: host voi olla estänyt '
+          'selainkäytön asetuksistaan, jolloin web-admin ei ole käytössä.'),
+]
 
 # Värit samat kuin propilkkitulospalvelu.fi:ssä
 BG = '#0a1219'
@@ -138,6 +181,37 @@ class App(tk.Tk):
         self._viehetila_vaihtui()
         self._suodata()
         self._valitse(self.jarvi)
+
+    # ---- ohje
+    def avaa_ohje(self):
+        if getattr(self, 'ohje_ikkuna', None) and self.ohje_ikkuna.winfo_exists():
+            self.ohje_ikkuna.lift()
+            return
+        w = self.ohje_ikkuna = tk.Toplevel(self)
+        w.title('Ohje · Admin tool')
+        w.configure(bg=BG)
+        w.geometry(f'640x640+{self.winfo_rootx() + 60}+{self.winfo_rooty() + 40}')
+        ylos = ttk.Frame(w)
+        ylos.pack(fill='x', padx=14, pady=(12, 0))
+        ttk.Label(ylos, text='Ohje', foreground=TEKSTI,
+                  font=('Segoe UI', 20, 'bold')).pack(side='left')
+        ttk.Label(ylos, text=f'versio {VERSIO}', foreground=HIMMEA).pack(
+            side='left', padx=10, pady=(8, 0))
+        ttk.Button(ylos, text='Avaa GitHub-sivu', command=lambda: webbrowser.open(REPO_URL)).pack(
+            side='right')
+        kehys = ttk.Frame(w)
+        kehys.pack(fill='both', expand=True, padx=14, pady=12)
+        t = tk.Text(kehys, wrap='word', bg=KORTTI, fg=TEKSTI2, relief='flat', padx=14, pady=10,
+                    font=('Segoe UI', 10), highlightthickness=1, highlightbackground=REUNA,
+                    spacing3=6, cursor='arrow')
+        sb = ttk.Scrollbar(kehys, orient='vertical', command=t.yview)
+        t.configure(yscrollcommand=sb.set)
+        sb.pack(side='right', fill='y')
+        t.pack(side='left', fill='both', expand=True)
+        t.tag_configure('h', foreground=KOROSTE, font=('Segoe UI', 11, 'bold'), spacing1=10)
+        for tyyppi, teksti in OHJE:
+            t.insert('end', teksti + '\n', tyyppi)
+        t.configure(state='disabled')
 
     # ---- seuranta
     def _loki(self, teksti, tagi='oma'):
@@ -404,6 +478,8 @@ class App(tk.Tk):
 
         ttk.Label(vasen, text='TYÖKALUT · HOSTIN OHJAUS', foreground=KOROSTE,
                   font=('Segoe UI', 9, 'bold')).pack(anchor='w')
+        ttk.Button(vasen, text='?  Ohje', command=self.avaa_ohje).place(relx=1.0, x=-22, y=2,
+                                                                     anchor='ne')
         ttk.Label(vasen, text='Admin tool', foreground=TEKSTI,
                   font=('Segoe UI', 24, 'bold')).pack(anchor='w')
         ttk.Label(vasen, text='Valitse vesistö ja asetukset ja lähetä ne hostille. '
@@ -713,6 +789,8 @@ class App(tk.Tk):
             self.loki.yview_scroll(-1 * (e.delta // 120), 'units')
         elif e.widget.winfo_toplevel() is self:
             self.canvas.yview_scroll(-1 * (e.delta // 120), 'units')
+        elif isinstance(e.widget, tk.Text):
+            e.widget.yview_scroll(-1 * (e.delta // 120), 'units')
         return 'break'
 
     def _paivita_valinnat(self):

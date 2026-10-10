@@ -17,6 +17,8 @@ valitse *Lisätietoja → Suorita kuitenkin*.
 
 ## Käyttö
 
+Työkalun oikeasta yläkulmasta (**? Ohje**) aukeaa sama ohje ohjelman sisällä.
+
 1. Kirjoita hostin **IP-osoite** ja **portti** (sama portti, jolla hostin info-sivu aukeaa selaimessa).
 2. Kirjoita **admin-salasana**. Sitä ei tallenneta levylle.
 3. Valitse vesistö ja asetukset ja paina **Lähetä hostille**.
