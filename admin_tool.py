@@ -8,6 +8,7 @@ import base64
 import ctypes
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -18,6 +19,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from kuvalataus import lataa_jarvikuvat
+from seuranta import ChatSeuranta, hae_info
 from lakes import (AJAT, JARVET, KESTOT, PELIMUODOT, TULOKSET, VIEHEITA, VIEHELAJIT,
                    VIEHETILAT, VUODENAJAT, sallitut_muodot, viehekoodi)
 
@@ -88,7 +90,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title('Pro Pilkki 2 · Admin tool')
-        self.geometry('1060x975')
+        self.geometry('1450x975')
         self.minsize(900, 600)
 
         self.jarvi = JARVET[0]
@@ -110,6 +112,16 @@ class App(tk.Tk):
         self.tulokset = tk.StringVar(value=dict(TULOKSET)['8'])
         self.viehe_kuvat = {}
         self.viehe_ikkuna = None
+        self.seuraa_chat = tk.BooleanVar(value=True)
+        self._info = None            # viimeisin info.json
+        self._info_virhe = None
+        self._info_tulos = None
+        self._info_kaynnissa = False
+        self._tikki = 0
+        self._chat = None
+        self._chat_avain = None
+        self._chat_edell = None
+        self.sk_kuvaviite = None
 
         self._teema()
         self._ui()
@@ -122,9 +134,118 @@ class App(tk.Tk):
         self.tulokset.trace_add('write', lambda *_: self._paivita())
         self._lataa_asetukset()
         self._hae_kuvat()
+        self.after(500, self._seuranta_tikki)
         self._viehetila_vaihtui()
         self._suodata()
         self._valitse(self.jarvi)
+
+    # ---- seuranta
+    def _loki(self, teksti, tagi='oma'):
+        self.loki.configure(state='normal')
+        self.loki.insert('end', time.strftime('%H:%M:%S ') , 'aika')
+        self.loki.insert('end', teksti + '\n', tagi)
+        rivit = int(self.loki.index('end-1c').split('.')[0])
+        if rivit > 500:
+            self.loki.delete('1.0', f'{rivit - 500}.0')
+        self.loki.configure(state='disabled')
+        self.loki.see('end')
+
+    def _seuranta_tikki(self):
+        """Kerran sekunnissa: hakee tilan (2 s välein) ja chatin ja päivittää paneelin."""
+        self._tikki += 1
+        ip, portti = self.ip.get().strip(), self.portti.get().strip()
+        valmis = bool(ip) and portti.isdigit()
+        if self._info_tulos is not None:
+            hip, hportti, info, virhe = self._info_tulos
+            self._info_tulos = None
+            if (hip, hportti) == (ip, portti):
+                self._info, self._info_virhe = info, virhe
+        if valmis and self._tikki % 2 == 0 and not self._info_kaynnissa:
+            self._info_kaynnissa = True
+
+            def tyo():
+                info, virhe = hae_info(ip, portti)
+                self._info_tulos = (ip, portti, info, virhe)
+                self._info_kaynnissa = False
+            threading.Thread(target=tyo, daemon=True).start()
+        if not valmis:
+            self._info, self._info_virhe = None, None
+        self._nayta_info(valmis)
+        self._chat_tikki(ip, portti)
+        self.after(1000, self._seuranta_tikki)
+
+    @staticmethod
+    def _kisan_tila(aika):
+        """TimeLeft -> (otsikko, teksti, väri). Tyhjä = ei kisaa käynnissä (lobby)."""
+        a = (aika or '').strip()
+        if re.fullmatch(r'\d+:\d\d', a):
+            return 'Kisa käynnissä, aikaa jäljellä', a, OK
+        m = re.search(r'(\d+:\d\d)', a)
+        if m and re.search(r'(?i)start', a):
+            return 'Lobbyssa, seuraava kisa alkaa', m.group(1), KOROSTE
+        if a:
+            return 'Lobbyssa', a, KOROSTE
+        return 'Lobbyssa, odottaa seuraavan kisan alkua', '–', KOROSTE
+
+    def _nayta_info(self, valmis):
+        i = self._info
+        if not valmis:
+            piste, tila, teksti = HIMMEA, 'Ei yhteyttä', 'Anna hostin IP ja portti'
+        elif i is None and self._info_virhe:
+            piste, tila, teksti = VIRHE, 'Ei yhteyttä', self._info_virhe
+        elif i is None:
+            piste, tila, teksti = HIMMEA, 'Yhdistetään…', ''
+        else:
+            piste, tila, teksti = OK, 'Yhteys OK', i.get('Host', '')
+        self.sk_piste.configure(fg=piste)
+        self.sk_tila.configure(text=tila)
+        self.sk_host.configure(text=teksti)
+        if i is None:
+            for w in (self.sk_versio, self.sk_jarvi, self.sk_peli, self.sk_aikaotsikko,
+                      self.sk_aika, self.sk_kuvaus, self.sk_pelaajat):
+                w.configure(text='')
+            self.sk_kuva.configure(image='')
+            return
+        self.sk_versio.configure(text=i.get('Version', ''))
+        jarvi = i.get('Lake', '')
+        self.sk_jarvi.configure(text=jarvi)
+        pituus = i.get('GameLength')
+        self.sk_peli.configure(text=' · '.join(
+            x for x in (i.get('GameType', ''), f'{pituus} min' if pituus else '') if x))
+        otsikko, aika, vari = self._kisan_tila(i.get('TimeLeft'))
+        self.sk_aikaotsikko.configure(text=otsikko)
+        self.sk_aika.configure(text=aika, fg=vari)
+        self.sk_kuvaus.configure(text=i.get('Description', '').strip())
+        pelaajat = [p.get('Name', '?') for p in i.get('PlayerList', [])]
+        jonossa = i.get('PlayersWaiting', 0)
+        rivi = f"Pelaajat {i.get('Players', len(pelaajat))} / {i.get('PlayersMax', '?')}"
+        if jonossa:
+            rivi += f' (jonossa {jonossa})'
+        if pelaajat:
+            rivi += ': ' + ', '.join(pelaajat)
+        self.sk_pelaajat.configure(text=rivi)
+        kuva = next((self._kuva(j) for j in JARVET if j['nimi'] == jarvi), '')
+        self.sk_kuvaviite = kuva
+        self.sk_kuva.configure(image=kuva)
+
+    def _chat_tikki(self, ip, portti):
+        pw = self.salasana.get()
+        avain = (ip, portti, pw) if (ip and portti.isdigit() and pw
+                                    and self.seuraa_chat.get()) else None
+        if avain == self._chat_edell and avain != self._chat_avain:   # vakaa kaksi tikkiä
+            if self._chat:
+                self._chat.lopeta()
+                self._chat = None
+            self._chat_avain = avain
+            if avain:
+                self._chat = ChatSeuranta(ip, portti, pw)
+                self._chat.aloita()
+                self._loki('Chat-seuranta käynnistyy…', 'tila')
+        self._chat_edell = avain
+        if self._chat:
+            while not self._chat.jono.empty():
+                tyyppi, teksti = self._chat.jono.get()
+                self._loki(teksti, {'chat': 'chat', 'virhe': 'virhe', 'tila': 'tila'}[tyyppi])
 
     def _hae_kuvat(self):
         """Hakee puuttuvat vesistökuvat taustalla (kuvat tulevat pelin omalta sivulta)."""
@@ -208,6 +329,74 @@ class App(tk.Tk):
         pad = {'padx': 8, 'pady': 2}
         vasen = ttk.Frame(self)
         vasen.pack(side='left', fill='both', expand=True, padx=8, pady=8)
+        sk = ttk.Frame(self, width=380)
+        sk.pack(side='right', fill='y', padx=(0, 8), pady=8)
+        sk.pack_propagate(False)
+        ttk.Label(sk, text='SEURANTA', foreground=KOROSTE,
+                  font=('Segoe UI', 9, 'bold')).pack(anchor='w')
+        ttk.Label(sk, text='Hosti nyt', foreground=TEKSTI,
+                  font=('Segoe UI', 24, 'bold')).pack(anchor='w', pady=(0, 6))
+        kortti = tk.Frame(sk, bg=KORTTI, highlightthickness=1, highlightbackground=REUNA)
+        kortti.pack(fill='x')
+
+        def etiketti(vanhempi, **kw):
+            kw.setdefault('bg', KORTTI)
+            kw.setdefault('fg', TEKSTI)
+            kw.setdefault('anchor', 'w')
+            kw.setdefault('justify', 'left')
+            return tk.Label(vanhempi, **kw)
+
+        ylos = tk.Frame(kortti, bg=KORTTI)
+        ylos.pack(fill='x', padx=10, pady=(8, 0))
+        self.sk_piste = etiketti(ylos, text='●', fg=HIMMEA, font=('Segoe UI', 12))
+        self.sk_piste.pack(side='left')
+        self.sk_tila = etiketti(ylos, text='Ei yhteyttä', fg=TEKSTI2, font=('Segoe UI', 10, 'bold'))
+        self.sk_tila.pack(side='left', padx=(4, 0))
+        self.sk_host = etiketti(kortti, text='Anna hostin IP ja portti', font=('Segoe UI', 13, 'bold'),
+                                wraplength=340)
+        self.sk_host.pack(fill='x', padx=10)
+        self.sk_versio = etiketti(kortti, text='', fg=HIMMEA, font=('Segoe UI', 9))
+        self.sk_versio.pack(fill='x', padx=10)
+        keski = tk.Frame(kortti, bg=KORTTI)
+        keski.pack(fill='x', padx=10, pady=8)
+        self.sk_kuva = tk.Label(keski, bg=KORTTI)
+        self.sk_kuva.pack(side='left')
+        tied = tk.Frame(keski, bg=KORTTI)
+        tied.pack(side='left', fill='x', expand=True, padx=(10, 0))
+        self.sk_jarvi = etiketti(tied, text='', font=('Segoe UI', 12, 'bold'), wraplength=220)
+        self.sk_jarvi.pack(fill='x')
+        self.sk_peli = etiketti(tied, text='', fg=TEKSTI2, wraplength=220)
+        self.sk_peli.pack(fill='x')
+        self.sk_aikaotsikko = etiketti(tied, text='', fg=HIMMEA, font=('Segoe UI', 9),
+                                       wraplength=220)
+        self.sk_aikaotsikko.pack(fill='x', pady=(6, 0))
+        self.sk_aika = etiketti(tied, text='', fg=OK, font=('Segoe UI', 24, 'bold'))
+        self.sk_aika.pack(fill='x')
+        self.sk_kuvaus = etiketti(kortti, text='', fg=TEKSTI2, wraplength=340)
+        self.sk_kuvaus.pack(fill='x', padx=10)
+        self.sk_pelaajat = etiketti(kortti, text='', fg=TEKSTI2, wraplength=340)
+        self.sk_pelaajat.pack(fill='x', padx=10, pady=(4, 10))
+
+        ttk.Label(sk, text='HOSTIN LOKI', foreground=KOROSTE,
+                  font=('Segoe UI', 9, 'bold')).pack(anchor='w', pady=(12, 2))
+        ttk.Checkbutton(sk, text='Seuraa hostin chattia (käyttää admin-salasanaa)',
+                        variable=self.seuraa_chat).pack(anchor='w', pady=(0, 4))
+        lokiriv = ttk.Frame(sk)
+        lokiriv.pack(fill='both', expand=True)
+        self.loki = tk.Text(lokiriv, width=10, height=8, state='disabled', wrap='word',
+                            font=('Consolas', 9), bg='#070d13', fg=TEKSTI, relief='flat',
+                            padx=8, pady=6, highlightthickness=1, highlightbackground=REUNA2,
+                            highlightcolor=REUNA2)
+        lsb = ttk.Scrollbar(lokiriv, orient='vertical', command=self.loki.yview)
+        self.loki.configure(yscrollcommand=lsb.set)
+        lsb.pack(side='right', fill='y')
+        self.loki.pack(side='left', fill='both', expand=True)
+        self.loki.tag_configure('aika', foreground=HIMMEA)
+        self.loki.tag_configure('oma', foreground=JAA)
+        self.loki.tag_configure('chat', foreground=TEKSTI)
+        self.loki.tag_configure('virhe', foreground=VIRHE)
+        self.loki.tag_configure('tila', foreground=OK)
+
         oikea = ttk.Frame(self, width=340)
         oikea.pack(side='right', fill='y', padx=8, pady=8)
 
@@ -497,7 +686,9 @@ class App(tk.Tk):
         self._paivita()
 
     def _rulla(self, e):
-        if e.widget.winfo_toplevel() is self:
+        if e.widget is self.loki:
+            self.loki.yview_scroll(-1 * (e.delta // 120), 'units')
+        elif e.widget.winfo_toplevel() is self:
             self.canvas.yview_scroll(-1 * (e.delta // 120), 'units')
         return 'break'
 
@@ -562,6 +753,7 @@ class App(tk.Tk):
         self._tallenna_asetukset()
         kom = kom or self.komennot()
         self.status.set(f'Lähetetään hostille {ip}:{portti} ...')
+        self._loki('→ ' + '  '.join(kom), 'oma')
 
         kayttaja, salasana = '', self.salasana.get()
 
@@ -579,6 +771,7 @@ class App(tk.Tk):
 
     def _valmis(self, ok, viesti):
         self.status.set(viesti)
+        self._loki(('✓ ' if ok else '✗ ') + viesti, 'tila' if ok else 'virhe')
 
     def _tallenna_asetukset(self):
         try:

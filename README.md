@@ -1,4 +1,4 @@
-﻿# Pro Pilkki 2 · Admin tool
+# Pro Pilkki 2 · Admin tool
 
 Graafinen etähallintatyökalu Pro Pilkki 2 -hostille. Valitse vesistö, vuodenaika,
 vuorokaudenaika, kesto, pelimuoto, aloituspaikka, vieheet ja väliaikatulokset, ja
@@ -24,6 +24,10 @@ valitse *Lisätietoja → Suorita kuitenkin*.
 Muut painikkeet: **Käynnistä** (`/start`), **Pysäytä** (`/stop`), **Autohost ON/OFF**
 (`/autohost on|off`) sekä **Lähetä vieheet ja väliajat** (`/lures`, `/results`).
 Komennot näkyvät ruudussa ennen lähetystä, ja **Kopioi** vie ne leikepöydälle.
+
+## Seuranta
+
+Oikealla näkyy hostin tila (julkinen `/info.json`): onko kisa käynnissä ja kuinka paljon aikaa on jäljellä, vai onko host lobbyssa odottamassa seuraavan kisan alkua, sekä vesistö, pelimuoto ja pelaajat. Hostin loki näyttää lähetetyt komennot ja kun admin-salasana on annettu, hostin chatin tapahtumat (esim. vastaus komentoon). Chatin seurannan voi kytkeä pois.
 
 Työkalu käyttää hostin omaa web-admin-sivua (`/Admin.html`, HTTP Basic -tunnistus).
 Host voi estää selainkäytön asetuksistaan, jolloin yhteys ei toimi.
