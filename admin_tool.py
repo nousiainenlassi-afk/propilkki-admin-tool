@@ -190,7 +190,7 @@ class App(tk.Tk):
     def _nayta_info(self, valmis):
         i = self._info
         if not valmis:
-            piste, tila, teksti = HIMMEA, 'Ei yhteyttä', 'Anna hostin IP ja portti'
+            piste, tila, teksti = VIRHE, 'Ei yhteyttä', 'Anna hostin IP ja portti'
         elif i is None and self._info_virhe:
             piste, tila, teksti = VIRHE, 'Ei yhteyttä', self._info_virhe
         elif i is None:
@@ -199,6 +199,8 @@ class App(tk.Tk):
             piste, tila, teksti = OK, 'Yhteys OK', i.get('Host', '')
         self.sk_piste.configure(fg=piste)
         self.sk_tila.configure(text=tila)
+        self.yht_piste.configure(fg=piste)
+        self.yht_teksti.configure(text=tila)
         self.sk_host.configure(text=teksti)
         if i is None:
             for w in (self.sk_versio, self.sk_jarvi, self.sk_peli, self.sk_aikaotsikko,
@@ -469,14 +471,35 @@ class App(tk.Tk):
         rivi.pack(fill='x', padx=6, pady=(4, 0))
         ip_k = ttk.Frame(rivi)
         ip_k.pack(side='left', fill='x', expand=True)
-        ttk.Label(ip_k, text='IP / osoite').pack(anchor='w')
+        ipr = tk.Frame(ip_k, bg=BG)
+        ipr.pack(fill='x')
+        ttk.Label(ipr, text='IP / osoite').pack(side='left')
+        self.yht_teksti = tk.Label(ipr, text='Ei yhteyttä', bg=BG, fg=TEKSTI2,
+                                   font=('Segoe UI', 9))
+        self.yht_teksti.pack(side='right')
+        self.yht_piste = tk.Label(ipr, text='●', bg=BG, fg=VIRHE, font=('Segoe UI', 10))
+        self.yht_piste.pack(side='right', padx=(0, 3))
         ttk.Entry(ip_k, textvariable=self.ip).pack(fill='x')
         pt_k = ttk.Frame(rivi)
         pt_k.pack(side='left', padx=(6, 0))
         ttk.Label(pt_k, text='Portti').pack(anchor='w')
         ttk.Entry(pt_k, textvariable=self.portti, width=7).pack()
         ttk.Label(f, text='Admin-salasana (ei tallenneta levylle)').pack(anchor='w', padx=6)
-        ttk.Entry(f, textvariable=self.salasana, show='•').pack(fill='x', padx=6, pady=(0, 4))
+        pwr = ttk.Frame(f)
+        pwr.pack(fill='x', padx=6, pady=(0, 4))
+        self.pw_kentta = ttk.Entry(pwr, textvariable=self.salasana, show='•')
+        self.pw_kentta.pack(side='left', fill='x', expand=True)
+        silma = tk.Label(pwr, text='👁', bg=PANEELI, fg=TEKSTI2, font=('Segoe UI Emoji', 11),
+                         width=3, cursor='hand2', highlightthickness=1,
+                         highlightbackground=REUNA2)
+        silma.pack(side='left', padx=(4, 0), fill='y')
+        # silmä: salasana näkyy vain niin kauan kuin hiiren painike on pohjassa
+        silma.bind('<ButtonPress-1>', lambda e: (self.pw_kentta.configure(show=''),
+                                                 silma.configure(fg=KOROSTE)))
+        silma.bind('<ButtonRelease-1>', lambda e: (self.pw_kentta.configure(show='•'),
+                                                   silma.configure(fg=TEKSTI2)))
+        silma.bind('<Leave>', lambda e: (self.pw_kentta.configure(show='•'),
+                                         silma.configure(fg=TEKSTI2)))
         ah = ttk.Frame(f)
         ah.pack(fill='x', padx=6, pady=(0, 6))
         ttk.Button(ah, text='Autohost ON', command=lambda: self.ohjaus('/autohost on')).pack(
