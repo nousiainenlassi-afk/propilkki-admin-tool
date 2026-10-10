@@ -1,0 +1,11 @@
+asetukset.json
+build/
+dist/
+*.spec
+__pycache__/
+*.log
+.env
+# vesistokuvat haetaan ajon aikana pelin sivulta, ei jaeta repossa
+kuvat/*.png
+
+err.txt
