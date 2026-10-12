@@ -17,7 +17,7 @@ valitse *Lisätietoja → Suorita kuitenkin*.
 
 ## Käyttö
 
-Otsikon vieressä olevasta **? Ohje** -painikkeesta aukeaa sama ohje ohjelman sisällä.
+Otsikon vieressä olevasta **? Ohje** -painikkeesta aukeaa sama ohje ohjelman sisällä. Kielen (Suomi / English) voi vaihtaa vieressä olevalla painikkeella.
 
 1. Kirjoita hostin **IP-osoite** ja **portti** (sama portti, jolla hostin info-sivu aukeaa selaimessa).
 2. Kirjoita **admin-salasana**. Sitä ei tallenneta levylle.
@@ -56,3 +56,23 @@ python lataa_kuvat.py                   # lataa kuvat kehityskäyttöön
 python -m PyInstaller --noconfirm --onefile --noconsole --name ProPilkki2-AdminTool ^
   --icon ikoni.ico --add-data "kuvat/vieheet;kuvat/vieheet" admin_tool.py
 ```
+
+## English
+
+Graphical remote control for a Pro Pilkki 2 host. Select the lake, season, day time, game
+duration, game type, start place, lures and intermediate results and send them straight to the
+host by IP address and port. The UI can be switched between **Suomi** and **English** with the
+button next to the title; the English terms are taken from the game itself.
+
+**Download:** get the latest `ProPilkki2-AdminTool.exe` from the
+[Releases page](../../releases/latest). No installation needed. Windows SmartScreen may warn about
+the unsigned exe: choose *More info -> Run anyway*.
+
+**Use:** enter the host IP and port (the port the host info page opens on in a browser) and the
+admin password (never saved to disk), pick the settings and press *Send to host*. The
+*Start* / *Stop* and *Autohost ON/OFF* buttons send `/start`, `/stop` and `/autohost on|off`. The
+monitoring panel on the right shows whether a competition is running (time left) or the host is
+in a game break, plus the players and the host chat. The **? Help** button opens the full
+instructions inside the program.
+
+Unofficial tool, not affiliated with Procyon Products.

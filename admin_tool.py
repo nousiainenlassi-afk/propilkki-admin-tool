@@ -20,9 +20,12 @@ import tkinter as tk
 from tkinter import ttk
 
 from kuvalataus import lataa_jarvikuvat
+import kieli
+from kieli import (OHJE, TULOKSET, TULOS_KOODIT, VIEHETILA_KOODIT, VIEHETILAT, aika_nimi,
+                   koodi_nimesta, muoto_nimi, t, tulos_nimi, viehelaji_nimi, viehetila_nimi,
+                   vuodenaika_nimi)
 from seuranta import ChatSeuranta, hae_info
-from lakes import (AJAT, JARVET, KESTOT, PELIMUODOT, TULOKSET, VIEHEITA, VIEHELAJIT,
-                   VIEHETILAT, VUODENAJAT, sallitut_muodot, viehekoodi)
+from lakes import AJAT, JARVET, KESTOT, VIEHEITA, VIEHELAJIT, VUODENAJAT, sallitut_muodot, viehekoodi
 
 # ------------------------------------------------------------------------ HTTP
 RES = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -55,61 +58,22 @@ def http_laheta(ip, portti, kayttaja, salasana, komennot, viive=0.5):
                 with urllib.request.urlopen(req, timeout=6) as r:
                     r.read()
                 time.sleep(viive)
-            return True, 'Lähetetty hostille: ' + ', '.join(c.split()[0] for c in komennot)
+            return True, t('lahetetty', k=', '.join(c.split()[0] for c in komennot))
         except urllib.error.HTTPError as e:
             if e.code == 401 and kayt != kayttajat[-1]:
                 continue
             if e.code == 401:
-                return False, 'Host hylkäsi tunnukset (401). Tarkista admin-salasana ja käyttäjätunnus.'
-            return False, f'Host vastasi virheellä {e.code}.'
+                return False, t('http401')
+            return False, t('http_virhe', code=e.code)
         except (urllib.error.URLError, OSError) as e:
-            return False, f'Yhteys hostiin {ip}:{portti} epäonnistui: {getattr(e, "reason", e)}'
-    return False, 'Lähetys epäonnistui.'
+            return False, t('yhteys_epaonnistui', ip=ip, portti=portti, e=getattr(e, 'reason', e))
+    return False, t('lahetys_epaonnistui')
 
 
 # --------------------------------------------------------------------- sovellus
 
-VERSIO = '1.2.0'
+VERSIO = '1.3.0'
 REPO_URL = 'https://github.com/nousiainenlassi-afk/propilkki-admin-tool'
-
-OHJE = [
-    ('h', 'Pikaohje'),
-    ('p', '1. Kirjoita hostin IP-osoite ja portti. Portti on sama, jolla hostin info-sivu '
-          'aukeaa selaimessa (esim. http://osoite:4500/).'),
-    ('p', '2. Kirjoita admin-salasana. Silmäpainike näyttää salasanan niin kauan kuin pidät '
-          'hiiren painiketta pohjassa. Salasanaa ei tallenneta levylle.'),
-    ('p', '3. Valitse vesistö, vuodenaika, vuorokaudenaika, kesto, pelimuoto ja aloituspaikka.'),
-    ('p', '4. Paina Lähetä hostille. Komennot näkyvät Komennot-ruudussa ennen lähetystä, ja '
-          'Kopioi vie ne leikepöydälle.'),
-    ('h', 'Painikkeet'),
-    ('p', 'Lähetä hostille: lähettää /lake- ja /game-komennot, eli seuraavan kisan vesistön ja '
-          'pelimuodon. Ne tulevat voimaan seuraavassa kisassa.'),
-    ('p', 'Käynnistä (/start) ja Pysäytä (/stop): käynnistää tai pysäyttää kisat.'),
-    ('p', 'Autohost ON / OFF: kytkee hostin automaattiajon päälle tai pois.'),
-    ('p', 'Lähetä vieheet ja väliajat: lähettää /lures- ja /results-komennot. Oma valinta '
-          'avaa kuvavalitsimen, jossa voit valita vieheet yksitellen.'),
-    ('h', 'Seuranta'),
-    ('p', 'Oikealla näkyy hostin tila: onko kisa käynnissä ja paljonko aikaa on jäljellä, vai '
-          'onko host lobbyssa odottamassa seuraavan kisan alkua. Lisäksi näkyvät vesistö, '
-          'pelimuoto ja pelaajat.'),
-    ('p', 'Hostin loki näyttää lähetetyt komennot ja, kun admin-salasana on annettu, hostin '
-          'chatin tapahtumat (esim. vastauksen komentoon). Chatin seurannan voi kytkeä pois.'),
-    ('p', 'Vihreä pallo = yhteys OK. Punainen pallo = ei yhteyttä.'),
-    ('h', 'Hyvä tietää'),
-    ('p', 'Yöllä pelattavat vain yövesistöt, ja yöllä pelimuotoina ovat made, kolme suurinta ja '
-          'viisi suurinta kalaa. Made-kisat pelataan vain yöllä.'),
-    ('p', 'Hiiren rulla vierittää aina vesistölistaa, joten muut asetukset eivät vaihdu '
-          'vahingossa.'),
-    ('p', 'Vieheiden ja väliaikatulosten valinta säilyy seuraavaan käynnistykseen. IP, portti '
-          'ja salasana eivät tallennu.'),
-    ('h', 'Ongelmatilanteita'),
-    ('p', 'Punainen pallo: tarkista IP ja portti, että host on käynnissä, ja että portti on '
-          'avattu reitittimestä ja palomuurista. Oman verkon sisältä oman WAN-osoitteen '
-          'käyttö ei aina toimi; käytä silloin koneen sisäverkon osoitetta.'),
-    ('p', 'Lähetys hylätään (401): admin-salasana on väärin.'),
-    ('p', 'Host ei vastaa lainkaan, vaikka osoite on oikein: host voi olla estänyt '
-          'selainkäytön asetuksistaan, jolloin web-admin ei ole käytössä.'),
-]
 
 # Värit samat kuin propilkkitulospalvelu.fi:ssä
 BG = '#0a1219'
@@ -132,6 +96,7 @@ DARK_TEXT = '#05121a'
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
+        self._aseta_kieli_alussa()
         self.title('Pro Pilkki 2 · Admin tool')
         self.geometry('1450x975')
         self.minsize(900, 600)
@@ -146,13 +111,13 @@ class App(tk.Tk):
         self.ip = tk.StringVar()
         self.portti = tk.StringVar()
         self.haku = tk.StringVar()
-        self.status = tk.StringVar(value='Valmis.')
+        self.status = tk.StringVar(value=t('valmis_status'))
         self.maara = tk.StringVar()
         self.nappi = {}
         self.kuvat = {}
         self.omat = [False] * VIEHEITA
-        self.viehetila = tk.StringVar(value=VIEHETILAT[0][1])
-        self.tulokset = tk.StringVar(value=dict(TULOKSET)['8'])
+        self.viehetila = tk.StringVar(value=viehetila_nimi('all'))
+        self.tulokset = tk.StringVar(value=tulos_nimi('8'))
         self.viehe_kuvat = {}
         self.viehe_ikkuna = None
         self.seuraa_chat = tk.BooleanVar(value=True)
@@ -188,30 +153,30 @@ class App(tk.Tk):
             self.ohje_ikkuna.lift()
             return
         w = self.ohje_ikkuna = tk.Toplevel(self)
-        w.title('Ohje · Admin tool')
+        w.title(t('ohje_ikkuna'))
         w.configure(bg=BG)
         w.geometry(f'640x640+{self.winfo_rootx() + 60}+{self.winfo_rooty() + 40}')
         ylos = ttk.Frame(w)
         ylos.pack(fill='x', padx=14, pady=(12, 0))
-        ttk.Label(ylos, text='Ohje', foreground=TEKSTI,
+        ttk.Label(ylos, text=t('ohje_otsikko'), foreground=TEKSTI,
                   font=('Segoe UI', 20, 'bold')).pack(side='left')
-        ttk.Label(ylos, text=f'versio {VERSIO}', foreground=HIMMEA).pack(
+        ttk.Label(ylos, text=t('versio', v=VERSIO), foreground=HIMMEA).pack(
             side='left', padx=10, pady=(8, 0))
-        ttk.Button(ylos, text='Avaa GitHub-sivu', command=lambda: webbrowser.open(REPO_URL)).pack(
+        ttk.Button(ylos, text=t('avaa_github'), command=lambda: webbrowser.open(REPO_URL)).pack(
             side='right')
         kehys = ttk.Frame(w)
         kehys.pack(fill='both', expand=True, padx=14, pady=12)
-        t = tk.Text(kehys, wrap='word', bg=KORTTI, fg=TEKSTI2, relief='flat', padx=14, pady=10,
+        tx = tk.Text(kehys, wrap='word', bg=KORTTI, fg=TEKSTI2, relief='flat', padx=14, pady=10,
                     font=('Segoe UI', 10), highlightthickness=1, highlightbackground=REUNA,
                     spacing3=6, cursor='arrow')
-        sb = ttk.Scrollbar(kehys, orient='vertical', command=t.yview)
-        t.configure(yscrollcommand=sb.set)
+        sb = ttk.Scrollbar(kehys, orient='vertical', command=tx.yview)
+        tx.configure(yscrollcommand=sb.set)
         sb.pack(side='right', fill='y')
-        t.pack(side='left', fill='both', expand=True)
-        t.tag_configure('h', foreground=KOROSTE, font=('Segoe UI', 11, 'bold'), spacing1=10)
-        for tyyppi, teksti in OHJE:
-            t.insert('end', teksti + '\n', tyyppi)
-        t.configure(state='disabled')
+        tx.pack(side='left', fill='both', expand=True)
+        tx.tag_configure('h', foreground=KOROSTE, font=('Segoe UI', 11, 'bold'), spacing1=10)
+        for tyyppi, teksti in OHJE[kieli.nyk()]:
+            tx.insert('end', teksti + '\n', tyyppi)
+        tx.configure(state='disabled')
 
     # ---- seuranta
     def _loki(self, teksti, tagi='oma'):
@@ -253,24 +218,24 @@ class App(tk.Tk):
         """TimeLeft -> (otsikko, teksti, väri). Tyhjä = ei kisaa käynnissä (lobby)."""
         a = (aika or '').strip()
         if re.fullmatch(r'\d+:\d\d', a):
-            return 'Kisa käynnissä, aikaa jäljellä', a, OK
+            return t('tila_kaynnissa'), a, OK
         m = re.search(r'(\d+:\d\d)', a)
         if m and re.search(r'(?i)start', a):
-            return 'Lobbyssa, seuraava kisa alkaa', m.group(1), KOROSTE
+            return t('tila_lobby_alkaa'), m.group(1), KOROSTE
         if a:
-            return 'Lobbyssa', a, KOROSTE
-        return 'Lobbyssa, odottaa seuraavan kisan alkua', '–', KOROSTE
+            return t('tila_lobby'), a, KOROSTE
+        return t('tila_lobby_odottaa'), '–', KOROSTE
 
     def _nayta_info(self, valmis):
         i = self._info
         if not valmis:
-            piste, tila, teksti = VIRHE, 'Ei yhteyttä', 'Anna hostin IP ja portti'
+            piste, tila, teksti = VIRHE, t('ei_yhteytta'), t('anna_ip')
         elif i is None and self._info_virhe:
-            piste, tila, teksti = VIRHE, 'Ei yhteyttä', self._info_virhe
+            piste, tila, teksti = VIRHE, t('ei_yhteytta'), self._info_virhe
         elif i is None:
-            piste, tila, teksti = HIMMEA, 'Yhdistetään…', ''
+            piste, tila, teksti = HIMMEA, t('yhdistetaan'), ''
         else:
-            piste, tila, teksti = OK, 'Yhteys OK', i.get('Host', '')
+            piste, tila, teksti = OK, t('yhteys_ok'), i.get('Host', '')
         self.sk_piste.configure(fg=piste)
         self.sk_tila.configure(text=tila)
         self.yht_piste.configure(fg=piste)
@@ -294,9 +259,9 @@ class App(tk.Tk):
         self.sk_kuvaus.configure(text=i.get('Description', '').strip())
         pelaajat = [p.get('Name', '?') for p in i.get('PlayerList', [])]
         jonossa = i.get('PlayersWaiting', 0)
-        rivi = f"Pelaajat {i.get('Players', len(pelaajat))} / {i.get('PlayersMax', '?')}"
+        rivi = t('pelaajat', a=i.get('Players', len(pelaajat)), b=i.get('PlayersMax', '?'))
         if jonossa:
-            rivi += f' (jonossa {jonossa})'
+            rivi += t('jonossa', n=jonossa)
         if pelaajat:
             rivi += ': ' + ', '.join(pelaajat)
         self.sk_pelaajat.configure(text=rivi)
@@ -316,7 +281,7 @@ class App(tk.Tk):
             if avain:
                 self._chat = ChatSeuranta(ip, portti, pw)
                 self._chat.aloita()
-                self._loki('Chat-seuranta käynnistyy…', 'tila')
+                self._loki(t('chat_kaynnistyy'), 'tila')
         self._chat_edell = avain
         if self._chat:
             while not self._chat.jono.empty():
@@ -408,9 +373,9 @@ class App(tk.Tk):
         sk = ttk.Frame(self, width=380)
         sk.pack(side='right', fill='y', padx=(0, 8), pady=8)
         sk.pack_propagate(False)
-        ttk.Label(sk, text='SEURANTA', foreground=KOROSTE,
+        ttk.Label(sk, text=t('seuranta'), foreground=KOROSTE,
                   font=('Segoe UI', 9, 'bold')).pack(anchor='w')
-        ttk.Label(sk, text='Hosti nyt', foreground=TEKSTI,
+        ttk.Label(sk, text=t('hosti_nyt'), foreground=TEKSTI,
                   font=('Segoe UI', 24, 'bold')).pack(anchor='w', pady=(0, 6))
         kortti = tk.Frame(sk, bg=KORTTI, highlightthickness=1, highlightbackground=REUNA)
         kortti.pack(fill='x')
@@ -426,9 +391,9 @@ class App(tk.Tk):
         ylos.pack(fill='x', padx=10, pady=(8, 0))
         self.sk_piste = etiketti(ylos, text='●', fg=HIMMEA, font=('Segoe UI', 12))
         self.sk_piste.pack(side='left')
-        self.sk_tila = etiketti(ylos, text='Ei yhteyttä', fg=TEKSTI2, font=('Segoe UI', 10, 'bold'))
+        self.sk_tila = etiketti(ylos, text=t('ei_yhteytta'), fg=TEKSTI2, font=('Segoe UI', 10, 'bold'))
         self.sk_tila.pack(side='left', padx=(4, 0))
-        self.sk_host = etiketti(kortti, text='Anna hostin IP ja portti', font=('Segoe UI', 13, 'bold'),
+        self.sk_host = etiketti(kortti, text=t('anna_ip'), font=('Segoe UI', 13, 'bold'),
                                 wraplength=340)
         self.sk_host.pack(fill='x', padx=10)
         self.sk_versio = etiketti(kortti, text='', fg=HIMMEA, font=('Segoe UI', 9))
@@ -453,9 +418,9 @@ class App(tk.Tk):
         self.sk_pelaajat = etiketti(kortti, text='', fg=TEKSTI2, wraplength=340)
         self.sk_pelaajat.pack(fill='x', padx=10, pady=(4, 10))
 
-        ttk.Label(sk, text='HOSTIN LOKI', foreground=KOROSTE,
+        ttk.Label(sk, text=t('hostin_loki'), foreground=KOROSTE,
                   font=('Segoe UI', 9, 'bold')).pack(anchor='w', pady=(12, 2))
-        ttk.Checkbutton(sk, text='Seuraa hostin chattia (käyttää admin-salasanaa)',
+        ttk.Checkbutton(sk, text=t('seuraa_chat'),
                         variable=self.seuraa_chat).pack(anchor='w', pady=(0, 4))
         lokiriv = ttk.Frame(sk)
         lokiriv.pack(fill='both', expand=True)
@@ -476,15 +441,16 @@ class App(tk.Tk):
         oikea = ttk.Frame(self, width=340)
         oikea.pack(side='right', fill='y', padx=8, pady=8)
 
-        ttk.Label(vasen, text='TYÖKALUT · HOSTIN OHJAUS', foreground=KOROSTE,
+        ttk.Label(vasen, text=t('ylaotsikko'), foreground=KOROSTE,
                   font=('Segoe UI', 9, 'bold')).pack(anchor='w')
-        ttk.Button(vasen, text='?  Ohje', command=self.avaa_ohje).place(relx=1.0, x=-22, y=2,
-                                                                     anchor='ne')
+        ttk.Button(vasen, text=t('ohje_nappi'), command=self.avaa_ohje).place(relx=1.0, x=-22, y=2,
+                                                                           anchor='ne')
+        ttk.Button(vasen, text=t('kieli_nappi'), command=self.vaihda_kieli).place(
+            relx=1.0, x=-130, y=2, anchor='ne')
         ttk.Label(vasen, text='Admin tool', foreground=TEKSTI,
                   font=('Segoe UI', 24, 'bold')).pack(anchor='w')
-        ttk.Label(vasen, text='Valitse vesistö ja asetukset ja lähetä ne hostille. '
-                  'Vesistöjen pelimuodot ja aloituspaikat ovat samat kuin pelissä.',
-                  foreground=TEKSTI2, wraplength=640).pack(anchor='w', pady=(0, 6))
+        ttk.Label(vasen, text=t('alaotsikko'), foreground=TEKSTI2, wraplength=640).pack(
+            anchor='w', pady=(0, 6))
         ttk.Entry(vasen, textvariable=self.haku).pack(fill='x', pady=4)
         ttk.Label(vasen, textvariable=self.maara, foreground=HIMMEA).pack(anchor='w')
         kehys = ttk.Frame(vasen)
@@ -513,35 +479,35 @@ class App(tk.Tk):
                     side='left', padx=6, pady=2)
             return f
 
-        ryhma('Vuodenaika', VUODENAJAT, self.vuodenaika)
-        self.aika_kehys = ryhma('Vuorokaudenaika', AJAT, self.aika)
-        ryhma('Kesto (min)', {k: str(v) for k, v in KESTOT.items()}, self.kesto)
+        ryhma(t('vuodenaika'), {k: vuodenaika_nimi(k) for k in VUODENAJAT}, self.vuodenaika)
+        self.aika_kehys = ryhma(t('vuorokaudenaika'), {k: aika_nimi(k) for k in AJAT}, self.aika)
+        ryhma(t('kesto'), {k: str(v) for k, v in KESTOT.items()}, self.kesto)
 
-        f = ttk.LabelFrame(oikea, text='Pelimuoto')
+        f = ttk.LabelFrame(oikea, text=t('pelimuoto'))
         f.pack(fill='x', **pad)
         self.muoto_cb = ttk.Combobox(f, textvariable=self.muoto, state='readonly')
         self.muoto_cb.pack(fill='x', padx=6, pady=4)
 
-        f = ttk.LabelFrame(oikea, text='Aloituspaikka')
+        f = ttk.LabelFrame(oikea, text=t('aloituspaikka'))
         f.pack(fill='x', **pad)
         self.paikka_cb = ttk.Combobox(f, textvariable=self.paikka, state='readonly')
         self.paikka_cb.pack(fill='x', padx=6, pady=4)
 
-        f = ttk.LabelFrame(oikea, text='Vieheet ja väliajat')
+        f = ttk.LabelFrame(oikea, text=t('viehe_ryhma'))
         f.pack(fill='x', **pad)
-        ttk.Label(f, text='Vieheet').pack(anchor='w', padx=6)
+        ttk.Label(f, text=t('vieheet')).pack(anchor='w', padx=6)
         self.viehe_cb = ttk.Combobox(f, textvariable=self.viehetila, state='readonly',
-                                     values=[t for _, t in VIEHETILAT])
+                                     values=[viehetila_nimi(k) for k in VIEHETILA_KOODIT])
         self.viehe_cb.pack(fill='x', padx=6, pady=(0, 2))
-        self.viehe_valinta = ttk.Button(f, text='Valitse vieheet…', command=self.avaa_vieheet)
+        self.viehe_valinta = ttk.Button(f, text=t('valitse_vieheet'), command=self.avaa_vieheet)
         self.viehe_valinta.pack(fill='x', padx=6, pady=(0, 4))
-        ttk.Label(f, text='Väliaikatulokset kisan aikana').pack(anchor='w', padx=6)
+        ttk.Label(f, text=t('valiajat')).pack(anchor='w', padx=6)
         ttk.Combobox(f, textvariable=self.tulokset, state='readonly',
-                     values=[t for _, t in TULOKSET]).pack(fill='x', padx=6, pady=(0, 4))
-        ttk.Button(f, text='Lähetä vieheet ja väliajat', command=self.laheta_asetukset).pack(
+                     values=[tulos_nimi(k) for k in TULOS_KOODIT]).pack(fill='x', padx=6, pady=(0, 4))
+        ttk.Button(f, text=t('laheta_asetukset'), command=self.laheta_asetukset).pack(
             fill='x', padx=6, pady=(0, 6))
 
-        f = ttk.LabelFrame(oikea, text='Hosti (ohjattava)')
+        f = ttk.LabelFrame(oikea, text=t('hosti_ryhma'))
         f.pack(fill='x', **pad)
         rivi = ttk.Frame(f)
         rivi.pack(fill='x', padx=6, pady=(4, 0))
@@ -549,8 +515,8 @@ class App(tk.Tk):
         ip_k.pack(side='left', fill='x', expand=True)
         ipr = tk.Frame(ip_k, bg=BG)
         ipr.pack(fill='x')
-        ttk.Label(ipr, text='IP / osoite').pack(side='left')
-        self.yht_teksti = tk.Label(ipr, text='Ei yhteyttä', bg=BG, fg=TEKSTI2,
+        ttk.Label(ipr, text=t('ip')).pack(side='left')
+        self.yht_teksti = tk.Label(ipr, text=t('ei_yhteytta'), bg=BG, fg=TEKSTI2,
                                    font=('Segoe UI', 9))
         self.yht_teksti.pack(side='right')
         self.yht_piste = tk.Label(ipr, text='●', bg=BG, fg=VIRHE, font=('Segoe UI', 10))
@@ -558,9 +524,9 @@ class App(tk.Tk):
         ttk.Entry(ip_k, textvariable=self.ip).pack(fill='x')
         pt_k = ttk.Frame(rivi)
         pt_k.pack(side='left', padx=(6, 0))
-        ttk.Label(pt_k, text='Portti').pack(anchor='w')
+        ttk.Label(pt_k, text=t('portti')).pack(anchor='w')
         ttk.Entry(pt_k, textvariable=self.portti, width=7).pack()
-        ttk.Label(f, text='Admin-salasana (ei tallenneta levylle)').pack(anchor='w', padx=6)
+        ttk.Label(f, text=t('salasana')).pack(anchor='w', padx=6)
         pwr = ttk.Frame(f)
         pwr.pack(fill='x', padx=6, pady=(0, 4))
         self.pw_kentta = ttk.Entry(pwr, textvariable=self.salasana, show='•')
@@ -582,7 +548,7 @@ class App(tk.Tk):
             side='left', fill='x', expand=True)
         ttk.Button(ah, text='Autohost OFF', command=lambda: self.ohjaus('/autohost off')).pack(
             side='left', fill='x', expand=True, padx=(6, 0))
-        ttk.Label(oikea, text='Komennot').pack(anchor='w', padx=8)
+        ttk.Label(oikea, text=t('komennot')).pack(anchor='w', padx=8)
         self.esikatselu = tk.Text(oikea, height=6, width=40, state='disabled', wrap='char',
                                   font=('Consolas', 10), bg='#070d13', fg=JAA,
                                   relief='flat', padx=8, pady=6, highlightthickness=1,
@@ -591,15 +557,15 @@ class App(tk.Tk):
 
         rivi = ttk.Frame(oikea)
         rivi.pack(fill='x', padx=8, pady=8)
-        ttk.Button(rivi, text='Lähetä hostille', style='Laheta.TButton', command=self.laheta).pack(
+        ttk.Button(rivi, text=t('laheta'), style='Laheta.TButton', command=self.laheta).pack(
             side='left', fill='x', expand=True)
-        ttk.Button(rivi, text='Kopioi', command=self.kopioi).pack(side='left', padx=(6, 0))
+        ttk.Button(rivi, text=t('kopioi'), command=self.kopioi).pack(side='left', padx=(6, 0))
         ohj = ttk.Frame(oikea)
         ohj.pack(fill='x', padx=8, pady=(0, 6))
-        ttk.Button(ohj, text='▶ Käynnistä (/start)', style='Start.TButton',
+        ttk.Button(ohj, text=t('kaynnista'), style='Start.TButton',
                    command=lambda: self.ohjaus('/start')).pack(
             side='left', fill='x', expand=True)
-        ttk.Button(ohj, text='■ Pysäytä (/stop)', style='Stop.TButton',
+        ttk.Button(ohj, text=t('pysayta'), style='Stop.TButton',
                    command=lambda: self.ohjaus('/stop')).pack(
             side='left', fill='x', expand=True, padx=(6, 0))
         ttk.Label(oikea, textvariable=self.status, wraplength=320,
@@ -615,7 +581,7 @@ class App(tk.Tk):
         for i, j in enumerate(jarvet):
             teksti = j['nimi']
             if j['paikat']:
-                teksti += f"\n{len(j['paikat'])} aloituspaikkaa"
+                teksti += '\n' + t('aloituspaikkoja', n=len(j['paikat']))
             else:
                 teksti += '\n '
             b = tk.Button(self.ruudukko, text=teksti, image=self._kuva(j), compound='top',
@@ -633,22 +599,30 @@ class App(tk.Tk):
 
     # ---- vieheet ja väliajat
     def viehe_komento(self):
-        koodi = next(k for k, t in VIEHETILAT if t == self.viehetila.get())
+        koodi = self.viehe_koodi()
         if koodi == 'custom':
             return '/lures custom ' + viehekoodi(self.omat)
         return '/lures ' + koodi
 
+    def viehe_koodi(self):
+        return koodi_nimesta({'x': {k: viehetila_nimi(k) for k in VIEHETILA_KOODIT}},
+                             self.viehetila.get()) or 'all'
+
+    def tulos_koodi(self):
+        return koodi_nimesta({'x': {k: tulos_nimi(k) for k in TULOS_KOODIT}},
+                             self.tulokset.get()) or '8'
+
     def tulos_komento(self):
-        return '/results ' + next(k for k, t in TULOKSET if t == self.tulokset.get())
+        return '/results ' + self.tulos_koodi()
 
     def _viehetila_vaihtui(self):
-        oma = self.viehetila.get() == VIEHETILAT[3][1]
+        oma = self.viehe_koodi() == 'custom'
         self.viehe_valinta.configure(state='normal' if oma else 'disabled')
         self._paivita()
 
     def laheta_asetukset(self):
-        if self.viehetila.get() == VIEHETILAT[3][1] and not any(self.omat):
-            self.status.set('Oma valinta on tyhjä. Valitse vähintään yksi viehe.')
+        if self.viehe_koodi() == 'custom' and not any(self.omat):
+            self.status.set(t('oma_tyhja'))
             return
         self.laheta([self.tulos_komento(), self.viehe_komento()])
 
@@ -657,7 +631,7 @@ class App(tk.Tk):
             self.viehe_ikkuna.lift()
             return
         w = self.viehe_ikkuna = tk.Toplevel(self)
-        w.title('Valitse vieheet')
+        w.title(t('viehe_ikkuna'))
         w.configure(bg=BG)
         w.transient(self)
         self.viehe_napit = {}
@@ -667,27 +641,27 @@ class App(tk.Tk):
         self.viehe_yht = tk.StringVar()
         ttk.Label(ylos, textvariable=self.viehe_yht, foreground=KOROSTE,
                   font=('Segoe UI', 11, 'bold')).pack(side='left')
-        ttk.Button(ylos, text='Valmis', command=w.destroy).pack(side='right')
-        ttk.Button(ylos, text='Tyhjennä kaikki',
+        ttk.Button(ylos, text=t('valmis_nappi'), command=w.destroy).pack(side='right')
+        ttk.Button(ylos, text=t('tyhjenna_kaikki'),
                    command=lambda: self._aseta_vieheet(range(VIEHEITA), False)).pack(
             side='right', padx=6)
-        ttk.Button(ylos, text='Valitse kaikki',
+        ttk.Button(ylos, text=t('valitse_kaikki'),
                    command=lambda: self._aseta_vieheet(range(VIEHEITA), True)).pack(side='right')
         rivit = [ttk.Frame(w) for _ in range(3)]
         for r in rivit:
             r.pack(fill='x', padx=10, pady=4)
         paikat = [rivit[0], rivit[1], rivit[2], rivit[2]]
-        for (nimi, alku, maara, kuva), vanhempi in zip(VIEHELAJIT, paikat):
-            laatikko = ttk.LabelFrame(vanhempi, text=nimi)
+        for ind, ((nimi, alku, maara, kuva), vanhempi) in enumerate(zip(VIEHELAJIT, paikat)):
+            laatikko = ttk.LabelFrame(vanhempi, text=viehelaji_nimi(ind))
             laatikko.pack(side='left', fill='x', expand=(maara == 16), padx=(0, 8))
             kp = ttk.Frame(laatikko)
             kp.pack(fill='x', padx=6)
             otsikko = tk.StringVar()
             self.laji_otsikot[nimi] = otsikko
             ttk.Label(kp, textvariable=otsikko, foreground=HIMMEA).pack(side='left')
-            ttk.Button(kp, text='Tyhjennä', width=9, command=lambda a=alku, m=maara:
+            ttk.Button(kp, text=t('tyhjenna'), width=9, command=lambda a=alku, m=maara:
                        self._aseta_vieheet(range(a, a + m), False)).pack(side='right')
-            ttk.Button(kp, text='Valitse kaikki', width=13, command=lambda a=alku, m=maara:
+            ttk.Button(kp, text=t('valitse_kaikki'), width=13, command=lambda a=alku, m=maara:
                        self._aseta_vieheet(range(a, a + m), True)).pack(side='right', padx=4)
             rivi = ttk.Frame(laatikko)
             rivi.pack(padx=4, pady=4)
@@ -730,7 +704,7 @@ class App(tk.Tk):
                         highlightbackground=KOROSTE if on else REUNA)
         for nimi, alku, maara, _ in VIEHELAJIT:
             self.laji_otsikot[nimi].set(f'{sum(self.omat[alku:alku + maara])}/{maara}')
-        self.viehe_yht.set(f'Valittu {sum(self.omat)} / {VIEHEITA} viehettä')
+        self.viehe_yht.set(t('valittu_vieheita', n=sum(self.omat), m=VIEHEITA))
         self._paivita()
 
     def _kuva(self, jarvi):
@@ -751,7 +725,7 @@ class App(tk.Tk):
         if q:
             self.maara.set(f'{len(nakyvat)} / {len(ajalla)}')
         else:
-            self.maara.set(f'{len(ajalla)} yövesistöä' if yo else f'{len(ajalla)} vesistöä')
+            self.maara.set(t('yojarvia' if yo else 'jarvia', n=len(ajalla)))
         self._rakenna_ruudukko(nakyvat)
 
     def _aika_vaihtui(self):
@@ -759,7 +733,7 @@ class App(tk.Tk):
         if self.aika.get() == 4 and not self.jarvi['yo']:
             vanha = self.jarvi['nimi']
             uusi = next(j for j in JARVET if j['yo'])
-            self.status.set(f'{vanha}: ei yöpelejä, vesistöksi vaihtui {uusi["nimi"]}.')
+            self.status.set(t('ei_yopelia', vanha=vanha, uusi=uusi['nimi']))
             self.jarvi = uusi
             self._paivita_valinnat()
         self._suodata()
@@ -796,11 +770,11 @@ class App(tk.Tk):
     def _paivita_valinnat(self):
         j = self.jarvi
         muodot = sallitut_muodot(j, self.aika.get())
-        self.muotolista = {PELIMUODOT[m]: m for m in muodot}
+        self.muotolista = {muoto_nimi(m): m for m in muodot}
         self.muoto_cb['values'] = list(self.muotolista)
         if self.muoto.get() not in self.muotolista:
             self.muoto.set(next(iter(self.muotolista)))
-        paikat = j['paikat'] or ['Ainoa paikka']
+        paikat = j['paikat'] or [t('ainoa_paikka')]
         self.paikka_cb['values'] = paikat
         self.paikka_cb.configure(state='readonly' if j['paikat'] else 'disabled')
         if self.paikka.get() not in paikat:
@@ -822,7 +796,7 @@ class App(tk.Tk):
             return
         # yöruudun muutos voi vaihtaa muotolistan
         vanha = list(self.muoto_cb['values'])
-        uusi = [PELIMUODOT[m] for m in sallitut_muodot(self.jarvi, self.aika.get())]
+        uusi = [muoto_nimi(m) for m in sallitut_muodot(self.jarvi, self.aika.get())]
         if vanha != uusi:
             self._paivita_valinnat()
         kom = self.komennot()
@@ -837,7 +811,7 @@ class App(tk.Tk):
     def kopioi(self):
         self.clipboard_clear()
         self.clipboard_append('\n'.join(self.komennot()))
-        self.status.set('Komennot kopioitu leikepöydälle (salasana mukana).')
+        self.status.set(t('kopioitu'))
 
     def ohjaus(self, komento):
         """Lähettää yksittäisen komennon (/start, /stop) samaa reittiä kuin kisan."""
@@ -846,14 +820,14 @@ class App(tk.Tk):
     def laheta(self, kom=None):
         ip, portti = self.ip.get().strip(), self.portti.get().strip()
         if not ip or not portti.isdigit():
-            self.status.set('Anna hostin IP ja portti (numero).')
+            self.status.set(t('anna_ip_portti'))
             return
         if not self.salasana.get():
-            self.status.set('Anna admin-salasana.')
+            self.status.set(t('anna_salasana'))
             return
         self._tallenna_asetukset()
         kom = kom or self.komennot()
-        self.status.set(f'Lähetetään hostille {ip}:{portti} ...')
+        self.status.set(t('lahetetaan', ip=ip, portti=portti))
         self._loki('→ ' + '  '.join(kom), 'oma')
 
         kayttaja, salasana = '', self.salasana.get()
@@ -877,19 +851,73 @@ class App(tk.Tk):
     def _tallenna_asetukset(self):
         try:
             with open(ASETUKSET, 'w', encoding='utf-8') as f:
-                json.dump({'vieheet': self.viehetila.get(), 'omat': viehekoodi(self.omat),
-                           'tulokset': self.tulokset.get()}, f)
+                json.dump({'kieli': kieli.nyk(), 'vieheet': self.viehe_koodi(),
+                           'omat': viehekoodi(self.omat), 'tulokset': self.tulos_koodi()}, f)
         except OSError:
             pass
+
+    def _aseta_kieli_alussa(self):
+        """Kieli: tallennettu valinta, muuten Windowsin kieli (suomi -> suomi, muuten English)."""
+        k = None
+        try:
+            with open(ASETUKSET, encoding='utf-8') as f:
+                k = json.load(f).get('kieli')
+        except (OSError, ValueError):
+            pass
+        kieli.aseta(k if k in kieli.KIELET else kieli.jarjestelman_kieli())
+
+    def vaihda_kieli(self):
+        """Vaihtaa kielen lennossa: tallentaa tilan koodeina, rakentaa ikkunan uudelleen."""
+        muoto_id = self.muotolista.get(self.muoto.get(), 1)
+        viehe, tulos = self.viehe_koodi(), self.tulos_koodi()
+        loki = self.loki.dump('1.0', 'end-1c', tag=True, text=True)
+        paikka_ind = self.paikka_cb['values'].index(self.paikka.get()) \
+            if self.paikka.get() in self.paikka_cb['values'] else 0
+        for ikkuna in (self.viehe_ikkuna, getattr(self, 'ohje_ikkuna', None)):
+            if ikkuna is not None and ikkuna.winfo_exists():
+                ikkuna.destroy()
+        kieli.aseta('en' if kieli.nyk() == 'fi' else 'fi')
+        for w in self.winfo_children():
+            w.destroy()
+        self.nappi.clear()
+        self._ui()
+        self.viehetila.set(viehetila_nimi(viehe))
+        self.tulokset.set(tulos_nimi(tulos))
+        self.status.set(t('valmis_status'))
+        self._viehetila_vaihtui()
+        self._suodata()
+        self._valitse(self.jarvi)
+        if muoto_id in self.muotolista.values():
+            self.muoto.set(muoto_nimi(muoto_id))
+        arvot = list(self.paikka_cb['values'])
+        if arvot:
+            self.paikka.set(arvot[min(paikka_ind, len(arvot) - 1)])
+        # lokin palautus
+        self.loki.configure(state='normal')
+        paalla = set()
+        for tyyppi, arvo, _ in loki:
+            if tyyppi == 'tagon':
+                paalla.add(arvo)
+            elif tyyppi == 'tagoff':
+                paalla.discard(arvo)
+            elif tyyppi == 'text':
+                self.loki.insert('end', arvo, tuple(paalla))
+        self.loki.configure(state='disabled')
+        self.loki.see('end')
+        self._tallenna_asetukset()
 
     def _lataa_asetukset(self):
         try:
             with open(ASETUKSET, encoding='utf-8') as f:
                 d = json.load(f)
-            if d.get('vieheet') in [t for _, t in VIEHETILAT]:
-                self.viehetila.set(d['vieheet'])
-            if d.get('tulokset') in [t for _, t in TULOKSET]:
-                self.tulokset.set(d['tulokset'])
+            v = d.get('vieheet')
+            v = v if v in VIEHETILA_KOODIT else koodi_nimesta(VIEHETILAT, v)   # vanhat: nimi
+            if v:
+                self.viehetila.set(viehetila_nimi(v))
+            tul = d.get('tulokset')
+            tul = tul if tul in TULOS_KOODIT else koodi_nimesta(TULOKSET, tul)
+            if tul:
+                self.tulokset.set(tulos_nimi(tul))
             koodi = str(d.get('omat', '')).replace('-', '')
             if len(koodi) == VIEHEITA and set(koodi) <= {'0', '1'}:
                 self.omat = [c == '1' for c in koodi]

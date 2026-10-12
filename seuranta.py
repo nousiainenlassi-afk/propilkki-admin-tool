@@ -15,6 +15,8 @@ import time
 import urllib.error
 import urllib.request
 
+from kieli import t
+
 
 def _pyynto(url, tunnus=None, timeout=6):
     req = urllib.request.Request(url)
@@ -35,9 +37,9 @@ def hae_info(ip, portti):
     try:
         return json.loads(_pyynto(f'http://{ip}:{portti}/info.json')), None
     except urllib.error.HTTPError as e:
-        return None, f'Host vastasi {e.code}'
+        return None, t('info_virhe_koodi', code=e.code)
     except json.JSONDecodeError:
-        return None, 'Host ei palauttanut tilatietoa (info.json)'
+        return None, t('info_ei_tilaa')
     except Exception as e:
         return None, str(getattr(e, 'reason', e))
 
@@ -83,10 +85,10 @@ class ChatSeuranta:
                 raise
             m = re.search(r'refresh\.html\?id=([0-9A-Za-z]+)', sivu)
             if not m:
-                self._virhe('Chat-istunnon tunnusta ei löytynyt Admin.html-sivulta.')
+                self._virhe(t('chat_ei_id'))
                 return None, None
             return m.group(1), tunnus
-        self._virhe('Admin-salasana hylättiin (401), chatia ei voi seurata.')
+        self._virhe(t('chat_401'))
         return None, None
 
     def _tyo(self):
@@ -100,7 +102,7 @@ class ChatSeuranta:
                         self._pysayta.wait(5)
                         continue
                     self._viime_virhe = None
-                    self.jono.put(('tila', 'Chat-seuranta käynnissä.'))
+                    self.jono.put(('tila', t('chat_kaynnissa')))
                 vastaus = _pyynto(f'{pohja}/refresh.html?id={chat_id}', tunnus)
                 rivit = vastaus.split('\n')
                 if rivit[0].strip() != '1':
@@ -112,6 +114,6 @@ class ChatSeuranta:
                         self.jono.put(('chat', r))
                 self._pysayta.wait(self.viive)
             except Exception as e:
-                self._virhe(f'Chat-yhteys: {getattr(e, "reason", e)}')
+                self._virhe(t('chat_yhteys', e=getattr(e, 'reason', e)))
                 chat_id = None
                 self._pysayta.wait(5)
