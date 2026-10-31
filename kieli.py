@@ -115,7 +115,8 @@ TEKSTIT = {
         'ylaotsikko': 'TYÖKALUT · HOSTIN OHJAUS',
         'alaotsikko': 'Valitse vesistö ja asetukset ja lähetä ne hostille. '
                       'Vesistöjen pelimuodot ja aloituspaikat ovat samat kuin pelissä.',
-        'ohje_nappi': '?  Ohje', 'kieli_nappi': 'English',
+        'ohje_nappi': '?  Ohje', 'kieli_nappi': 'EN', 'tyokalut_nappi': '←  Työkalut',
+        'era_asetukset': 'Erän asetukset', 'hae_vesistoa': 'Hae vesistöä',
         'jarvia': '{n} vesistöä', 'yojarvia': '{n} yövesistöä',
         'aloituspaikkoja': '{n} aloituspaikkaa',
         'vuodenaika': 'Vuodenaika', 'vuorokaudenaika': 'Vuorokaudenaika', 'kesto': 'Kesto (min)',
@@ -163,7 +164,8 @@ TEKSTIT = {
         'ylaotsikko': 'TOOLS · HOST CONTROL',
         'alaotsikko': 'Select the lake and settings and send them to the host. '
                       'Game types and start places are the same as in the game.',
-        'ohje_nappi': '?  Help', 'kieli_nappi': 'Suomi',
+        'ohje_nappi': '?  Help', 'kieli_nappi': 'FI', 'tyokalut_nappi': '←  Tools',
+        'era_asetukset': 'Game settings', 'hae_vesistoa': 'Search lakes',
         'jarvia': '{n} lakes', 'yojarvia': '{n} night lakes',
         'aloituspaikkoja': '{n} start places',
         'vuodenaika': 'Season', 'vuorokaudenaika': 'Day time', 'kesto': 'Game duration (min)',
@@ -239,7 +241,7 @@ OHJE = {
               'viisi suurinta kalaa. Made-kisat pelataan vain yöllä.'),
         ('p', 'Hiiren rulla vierittää aina vesistölistaa, joten muut asetukset eivät vaihdu '
               'vahingossa.'),
-        ('p', 'Kieli vaihdetaan otsikon vieressä olevasta painikkeesta (Suomi / English). '
+        ('p', 'Kieli vaihdetaan otsikon vieressä olevasta painikkeesta (FI / EN). '
               'Vieheiden ja väliaikatulosten valinta ja kieli säilyvät seuraavaan käynnistykseen. '
               'IP, portti ja salasana eivät tallennu.'),
         ('h', 'Ongelmatilanteita'),
@@ -279,7 +281,7 @@ OHJE = {
               'three biggest fish and five biggest fish. Burbot games are only played at night.'),
         ('p', 'The mouse wheel always scrolls the lake list only, so other settings do not '
               'change by accident.'),
-        ('p', 'Change the language with the button next to the title (Suomi / English). The lure '
+        ('p', 'Change the language with the button next to the title (FI / EN). The lure '
               'and intermediate results selections and the language are remembered. The IP, port '
               'and password are not saved.'),
         ('h', 'Troubleshooting'),

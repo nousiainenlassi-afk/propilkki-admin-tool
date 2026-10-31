@@ -54,7 +54,8 @@ kansioon `%LOCALAPPDATA%\ProPilkkiAdminTool`. Siellä on myös `asetukset.json`
 python admin_tool.py                    # ajaa suoraan (Python 3.10+, ei lisäpaketteja)
 python lataa_kuvat.py                   # lataa kuvat kehityskäyttöön
 python -m PyInstaller --noconfirm --onefile --noconsole --name ProPilkki2-AdminTool ^
-  --icon ikoni.ico --add-data "kuvat/vieheet;kuvat/vieheet" admin_tool.py
+  --icon ikoni.ico --add-data "kuvat/vieheet;kuvat/vieheet" --add-data "kuvat/tausta.jpg;kuvat" ^
+  --add-data "fontit;fontit" --add-data "ikoni.ico;." admin_tool.py
 ```
 
 ## English
@@ -76,3 +77,10 @@ in a game break, plus the players and the host chat. The **? Help** button opens
 instructions inside the program.
 
 Unofficial tool, not affiliated with Procyon Products.
+
+## Ulkoasu ja fontti / Look and font
+
+Ulkoasu seuraa Pro Pilkki 2 Tulospalvelun työkaluja (yläpalkki, värit, kortit). Mukana tuleva
+Hanken Grotesk -fontti on lisensoitu SIL Open Font License 1.1 -lisenssillä (`fontit/OFL.txt`).
+The look follows the Pro Pilkki 2 Tulospalvelu tools. The bundled Hanken Grotesk font is licensed
+under the SIL Open Font License 1.1 (`fontit/OFL.txt`).

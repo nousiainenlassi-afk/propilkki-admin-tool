@@ -21,6 +21,11 @@ from tkinter import ttk
 
 from kuvalataus import lataa_jarvikuvat
 import kieli
+import ui
+from ui import (SIVU as BG, Kortti, Nappi, Ylapalkki, F, JAA, OK, PINTA, PINTA2 as PANEELI, REUNA,
+                REUNA2, TEKSTI, TEKSTI2, TEKSTI3 as HIMMEA, TUMMA as DARK_TEXT, VALITTU, VIRHE,
+                PRIMARY as KOROSTE, HOVER as KORTTI_HOVER, PINTA2 as KORTTI, otsikko,
+                pieni_otsikko, tiili)
 from kieli import (OHJE, TULOKSET, TULOS_KOODIT, VIEHETILA_KOODIT, VIEHETILAT, aika_nimi,
                    koodi_nimesta, muoto_nimi, t, tulos_nimi, viehelaji_nimi, viehetila_nimi,
                    vuodenaika_nimi)
@@ -72,34 +77,21 @@ def http_laheta(ip, portti, kayttaja, salasana, komennot, viive=0.5):
 
 # --------------------------------------------------------------------- sovellus
 
-VERSIO = '1.3.0'
+VERSIO = '1.4.0'
 REPO_URL = 'https://github.com/nousiainenlassi-afk/propilkki-admin-tool'
 
-# Värit samat kuin propilkkitulospalvelu.fi:ssä
-BG = '#0a1219'
-PANEELI = '#162330'          # kentät, valikot (surface-2)
-KORTTI = '#162330'           # vesistökortti
-KORTTI_HOVER = '#1b2a38'
-VALITTU = '#173345'          # primary 20 % taustan päällä
-KOROSTE = '#3ea8d8'          # primary
-JAA = '#9ad8ea'
-TEKSTI = '#e8eef3'
-TEKSTI2 = '#a7b8c6'
-HIMMEA = '#71879a'
-REUNA = '#233444'
-REUNA2 = '#2f4558'
-OK = '#4fcf9a'
-VIRHE = '#ef7b7b'
-DARK_TEXT = '#05121a'
+TYOKALUT_URL = 'https://propilkkitulospalvelu.fi/#/tyokalut'
+RUUTU_W, RUUTU_H = 136, 172
 
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
+        ui.lataa_fontit()
         self._aseta_kieli_alussa()
         self.title('Pro Pilkki 2 · Admin tool')
-        self.geometry('1450x975')
-        self.minsize(900, 600)
+        self.geometry('1450x990')
+        self.minsize(1240, 700)
 
         self.jarvi = JARVET[0]
         self.vuodenaika = tk.IntVar(value=3)
@@ -126,6 +118,7 @@ class App(tk.Tk):
         self._info_tulos = None
         self._info_kaynnissa = False
         self._tikki = 0
+        self._sarakkeita = 4
         self._chat = None
         self._chat_avain = None
         self._chat_edell = None
@@ -154,7 +147,7 @@ class App(tk.Tk):
             return
         w = self.ohje_ikkuna = tk.Toplevel(self)
         w.title(t('ohje_ikkuna'))
-        w.configure(bg=BG)
+        w.configure(bg=PINTA)
         w.geometry(f'640x640+{self.winfo_rootx() + 60}+{self.winfo_rooty() + 40}')
         ylos = ttk.Frame(w)
         ylos.pack(fill='x', padx=14, pady=(12, 0))
@@ -162,7 +155,7 @@ class App(tk.Tk):
                   font=('Segoe UI', 20, 'bold')).pack(side='left')
         ttk.Label(ylos, text=t('versio', v=VERSIO), foreground=HIMMEA).pack(
             side='left', padx=10, pady=(8, 0))
-        ttk.Button(ylos, text=t('avaa_github'), command=lambda: webbrowser.open(REPO_URL)).pack(
+        Nappi(ylos, t('avaa_github'), lambda: webbrowser.open(REPO_URL), 'secondary', 36, 150).pack(
             side='right')
         kehys = ttk.Frame(w)
         kehys.pack(fill='both', expand=True, padx=14, pady=12)
@@ -309,52 +302,45 @@ class App(tk.Tk):
             self.after(500, self._odota_kuvat)
             return
         self.kuvat.clear()
+        ui.tyhjenna_tiilet()
         self._suodata()
 
     # ---- ulkoasu
     def _teema(self):
         self.configure(bg=BG)
+        try:
+            self.iconbitmap(os.path.join(RES, 'ikoni.ico'))
+        except Exception:
+            pass
         st = ttk.Style(self)
         st.theme_use('clam')
-        st.configure('.', background=BG, foreground=TEKSTI, fieldbackground=PANEELI,
+        st.configure('.', background=PINTA, foreground=TEKSTI, fieldbackground=PANEELI,
                      bordercolor=REUNA2, lightcolor=REUNA2, darkcolor=REUNA2,
-                     troughcolor=BG, font=('Segoe UI', 10))
-        st.configure('TFrame', background=BG)
-        st.configure('TLabel', background=BG, foreground=TEKSTI2)
-        st.configure('TLabelframe', background=BG, bordercolor=REUNA, relief='solid')
-        st.configure('TLabelframe.Label', background=BG, foreground=TEKSTI,
-                     font=('Segoe UI', 10, 'bold'))
-        st.configure('TRadiobutton', background=BG, foreground=TEKSTI, indicatorcolor=PANEELI)
-        st.configure('TCheckbutton', background=BG, foreground=TEKSTI, indicatorcolor=PANEELI)
-        st.map('TRadiobutton', background=[('active', BG)], indicatorcolor=[('selected', KOROSTE)],
+                     troughcolor=PINTA, font=F(10))
+        st.configure('TFrame', background=PINTA)
+        st.configure('TLabel', background=PINTA, foreground=TEKSTI2)
+        st.configure('TLabelframe', background=PINTA, bordercolor=REUNA, relief='solid')
+        st.configure('TLabelframe.Label', background=PINTA, foreground=TEKSTI, font=F(10, True))
+        st.configure('TRadiobutton', background=PINTA, foreground=TEKSTI, indicatorcolor=PANEELI)
+        st.configure('TCheckbutton', background=PINTA, foreground=TEKSTI, indicatorcolor=PANEELI)
+        st.map('TRadiobutton', background=[('active', PINTA)], indicatorcolor=[('selected', KOROSTE)],
                foreground=[('active', '#ffffff')])
-        st.map('TCheckbutton', background=[('active', BG)], indicatorcolor=[('selected', KOROSTE)],
+        st.map('TCheckbutton', background=[('active', PINTA)], indicatorcolor=[('selected', KOROSTE)],
                foreground=[('active', '#ffffff')])
         st.configure('TEntry', fieldbackground=PANEELI, foreground=TEKSTI,
-                     insertcolor=TEKSTI, padding=5)
-        st.configure('TCombobox', fieldbackground=PANEELI, background=KORTTI,
-                     foreground=TEKSTI, arrowcolor=TEKSTI2, padding=5)
-        st.map('TCombobox', fieldbackground=[('readonly', PANEELI), ('disabled', BG)],
+                     insertcolor=TEKSTI, padding=6)
+        st.configure('TCombobox', fieldbackground=PANEELI, background=PANEELI,
+                     foreground=TEKSTI, arrowcolor=TEKSTI2, padding=6)
+        st.map('TCombobox', fieldbackground=[('readonly', PANEELI), ('disabled', PINTA)],
                foreground=[('disabled', HIMMEA)], selectbackground=[('readonly', PANEELI)],
                selectforeground=[('readonly', TEKSTI)])
-        st.configure('TButton', background=PANEELI, foreground=TEKSTI, padding=8, borderwidth=1)
-        st.map('TButton', background=[('active', KORTTI_HOVER)],
-               foreground=[('disabled', HIMMEA)])
-        st.configure('Laheta.TButton', background='#5ab7e1', foreground=DARK_TEXT,
-                     font=('Segoe UI', 10, 'bold'), bordercolor='#5ab7e1')
-        st.map('Laheta.TButton', background=[('active', '#7cc8ec')])
-        st.configure('Start.TButton', background=OK, foreground=DARK_TEXT,
-                     font=('Segoe UI', 10, 'bold'), bordercolor=OK)
-        st.map('Start.TButton', background=[('active', '#6fdcb0')])
-        st.configure('Stop.TButton', background=VIRHE, foreground=DARK_TEXT,
-                     font=('Segoe UI', 10, 'bold'), bordercolor=VIRHE)
-        st.map('Stop.TButton', background=[('active', '#f39a9a')])
-        st.configure('Vertical.TScrollbar', background=REUNA2, troughcolor=BG,
-                     arrowcolor=TEKSTI2, bordercolor=BG)
+        st.configure('Vertical.TScrollbar', background=REUNA2, troughcolor=PINTA,
+                     arrowcolor=TEKSTI2, bordercolor=PINTA)
         self.option_add('*TCombobox*Listbox.background', PANEELI)
         self.option_add('*TCombobox*Listbox.foreground', TEKSTI)
         self.option_add('*TCombobox*Listbox.selectBackground', KOROSTE)
         self.option_add('*TCombobox*Listbox.selectForeground', DARK_TEXT)
+        self.option_add('*TCombobox*Listbox.font', F(10))
         try:   # tumma otsikkopalkki Windows 10/11:ssa
             self.update()
             hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
@@ -367,62 +353,210 @@ class App(tk.Tk):
 
     # ---- käyttöliittymä
     def _ui(self):
-        pad = {'padx': 8, 'pady': 2}
-        vasen = ttk.Frame(self)
-        vasen.pack(side='left', fill='both', expand=True, padx=8, pady=8)
-        sk = ttk.Frame(self, width=380)
-        sk.pack(side='right', fill='y', padx=(0, 8), pady=8)
+        yp = Ylapalkki(self)
+        yp.pack(side='top', fill='x')
+        for teksti, komento, lev in ((t('kieli_nappi'), self.vaihda_kieli, 56),
+                                     (t('ohje_nappi'), self.avaa_ohje, 100),
+                                     (t('tyokalut_nappi'), lambda: webbrowser.open(TYOKALUT_URL), 120)):
+            yp.lisaa_nappi(Nappi(yp, teksti, komento, 'secondary', 40, lev, bg='#0a1017'))
+
+        runko = tk.Frame(self, bg=BG)
+        runko.pack(fill='both', expand=True, padx=16, pady=(14, 14))
+        vasen = tk.Frame(runko, bg=BG)
+        vasen.pack(side='left', fill='both', expand=True)
+        sk = tk.Frame(runko, bg=BG, width=372)
+        sk.pack(side='right', fill='y', padx=(12, 0))
         sk.pack_propagate(False)
-        ttk.Label(sk, text=t('seuranta'), foreground=KOROSTE,
-                  font=('Segoe UI', 9, 'bold')).pack(anchor='w')
-        ttk.Label(sk, text=t('hosti_nyt'), foreground=TEKSTI,
-                  font=('Segoe UI', 24, 'bold')).pack(anchor='w', pady=(0, 6))
-        kortti = tk.Frame(sk, bg=KORTTI, highlightthickness=1, highlightbackground=REUNA)
-        kortti.pack(fill='x')
+        oikea = tk.Frame(runko, bg=BG, width=372)
+        oikea.pack(side='right', fill='y', padx=(12, 0))
+        oikea.pack_propagate(False)
+
+        # ------------------------------------------------ vasen: otsikko + vesistölista
+        tk.Label(vasen, text=t('ylaotsikko'), bg=BG, fg=JAA, font=F(9, True), anchor='w').pack(fill='x')
+        tk.Label(vasen, text='Admin tool', bg=BG, fg=TEKSTI, font=F(28, True), anchor='w').pack(fill='x')
+        tk.Label(vasen, text=t('alaotsikko'), bg=BG, fg=TEKSTI2, font=F(10), anchor='w',
+                 justify='left', wraplength=620).pack(fill='x', pady=(0, 10))
+        lista = Kortti(vasen, venyta=True)
+        lista.pack(fill='both', expand=True)
+        ls = lista.sisa
+        pieni_otsikko(ls, t('hae_vesistoa')).pack(fill='x')
+        ttk.Entry(ls, textvariable=self.haku).pack(fill='x')
+        tk.Label(ls, textvariable=self.maara, bg=PINTA, fg=HIMMEA, font=F(9), anchor='w').pack(
+            fill='x', pady=(4, 6))
+        kehys = tk.Frame(ls, bg=PINTA)
+        kehys.pack(fill='both', expand=True)
+        self.canvas = tk.Canvas(kehys, highlightthickness=0, bg=PINTA)
+        sb = ttk.Scrollbar(kehys, orient='vertical', command=self.canvas.yview)
+        self.ruudukko = tk.Frame(self.canvas, bg=PINTA)
+        self.ruudukko.bind('<Configure>', lambda e: self.canvas.configure(
+            scrollregion=self.canvas.bbox('all')))
+        ikkuna_id = self.canvas.create_window((0, 0), window=self.ruudukko, anchor='nw')
+        self.canvas.bind('<Configure>', lambda e: self._canvas_leveys(e, ikkuna_id))
+        self.canvas.configure(yscrollcommand=sb.set)
+        self.canvas.pack(side='left', fill='both', expand=True)
+        sb.pack(side='right', fill='y')
+        # hiiren rulla vierittää aina vain vesistölistaa, ei vaihda muita asetuksia
+        for tagi in ('all', 'TCombobox', 'Text'):
+            self.bind_class(tagi, '<MouseWheel>', self._rulla)
+        self._rakenna_ruudukko(JARVET)
+
+        # ------------------------------------------------ keskellä: erän asetukset, vieheet, komennot
+        def kortti(vanhempi, **kw):
+            k = Kortti(vanhempi, **kw)
+            return k
+
+        def ryhma(s, otsikko_txt, arvot, var):
+            pieni_otsikko(s, otsikko_txt).pack(fill='x')
+            f = tk.Frame(s, bg=PINTA)
+            f.pack(fill='x', pady=(0, 6))
+            for k, nimi in arvot.items():
+                ttk.Radiobutton(f, text=nimi, value=k, variable=var).pack(side='left', padx=(0, 12))
+
+        a = kortti(oikea)
+        a.pack(fill='x', pady=(0, 10))
+        s = a.sisa
+        otsikko(s, t('era_asetukset')).pack(fill='x', pady=(0, 6))
+        ryhma(s, t('vuodenaika'), {k: vuodenaika_nimi(k) for k in VUODENAJAT}, self.vuodenaika)
+        ryhma(s, t('vuorokaudenaika'), {k: aika_nimi(k) for k in AJAT}, self.aika)
+        ryhma(s, t('kesto'), {k: str(v) for k, v in KESTOT.items()}, self.kesto)
+        pieni_otsikko(s, t('pelimuoto')).pack(fill='x')
+        self.muoto_cb = ttk.Combobox(s, textvariable=self.muoto, state='readonly')
+        self.muoto_cb.pack(fill='x', pady=(0, 6))
+        pieni_otsikko(s, t('aloituspaikka')).pack(fill='x')
+        self.paikka_cb = ttk.Combobox(s, textvariable=self.paikka, state='readonly')
+        self.paikka_cb.pack(fill='x')
+
+        b = kortti(oikea)
+        b.pack(fill='x', pady=(0, 10))
+        s = b.sisa
+        otsikko(s, t('viehe_ryhma')).pack(fill='x', pady=(0, 6))
+        pieni_otsikko(s, t('vieheet')).pack(fill='x')
+        r = tk.Frame(s, bg=PINTA)
+        r.pack(fill='x', pady=(0, 6))
+        self.viehe_cb = ttk.Combobox(r, textvariable=self.viehetila, state='readonly',
+                                     values=[viehetila_nimi(k) for k in VIEHETILA_KOODIT])
+        self.viehe_cb.pack(side='left', fill='x', expand=True)
+        self.viehe_valinta = Nappi(r, t('valitse_vieheet'), self.avaa_vieheet, 'secondary', 34, 150)
+        self.viehe_valinta.pack(side='left', padx=(8, 0))
+        pieni_otsikko(s, t('valiajat')).pack(fill='x')
+        ttk.Combobox(s, textvariable=self.tulokset, state='readonly',
+                     values=[tulos_nimi(k) for k in TULOS_KOODIT]).pack(fill='x', pady=(0, 8))
+        Nappi(s, t('laheta_asetukset'), self.laheta_asetukset, 'secondary', 38).pack(fill='x')
+
+        d = kortti(oikea)
+        d.pack(fill='x')
+        s = d.sisa
+        otsikko(s, t('komennot')).pack(fill='x', pady=(0, 6))
+        self.esikatselu = tk.Text(s, height=6, width=10, state='disabled', wrap='char',
+                                  font=('Consolas', 10), bg='#070d13', fg=JAA,
+                                  relief='flat', padx=10, pady=8, highlightthickness=1,
+                                  highlightbackground=REUNA2, highlightcolor=REUNA2)
+        self.esikatselu.pack(fill='x', pady=(0, 10))
+        r = tk.Frame(s, bg=PINTA)
+        r.pack(fill='x', pady=(0, 8))
+        Nappi(r, t('kopioi'), self.kopioi, 'secondary', 40, 96).pack(side='right', padx=(8, 0))
+        Nappi(r, t('laheta'), self.laheta, 'primary', 40).pack(side='left', fill='x', expand=True)
+        r = tk.Frame(s, bg=PINTA)
+        r.pack(fill='x')
+        Nappi(r, t('kaynnista'), lambda: self.ohjaus('/start'), 'success', 40).pack(
+            side='left', fill='x', expand=True)
+        Nappi(r, t('pysayta'), lambda: self.ohjaus('/stop'), 'danger', 40).pack(
+            side='left', fill='x', expand=True, padx=(8, 0))
+        tk.Label(s, textvariable=self.status, bg=PINTA, fg=HIMMEA, font=F(9), anchor='w',
+                 justify='left', wraplength=320).pack(fill='x', pady=(8, 0))
+
+        # ------------------------------------------------ oikealla: host, tila, loki
+        tk.Label(sk, text=t('seuranta'), bg=BG, fg=JAA, font=F(9, True), anchor='w').pack(fill='x')
+        h = kortti(sk)
+        h.pack(fill='x', pady=(4, 10))
+        s = h.sisa
+        otsikko(s, t('hosti_ryhma')).pack(fill='x', pady=(0, 6))
+        rivi = tk.Frame(s, bg=PINTA)
+        rivi.pack(fill='x')
+        ip_k = tk.Frame(rivi, bg=PINTA)
+        ip_k.pack(side='left', fill='x', expand=True)
+        ipr = tk.Frame(ip_k, bg=PINTA)
+        ipr.pack(fill='x')
+        pieni_otsikko(ipr, t('ip')).pack(side='left')
+        self.yht_teksti = tk.Label(ipr, text=t('ei_yhteytta'), bg=PINTA, fg=TEKSTI2, font=F(9))
+        self.yht_teksti.pack(side='right')
+        self.yht_piste = tk.Label(ipr, text='●', bg=PINTA, fg=VIRHE, font=F(10))
+        self.yht_piste.pack(side='right', padx=(0, 3))
+        ttk.Entry(ip_k, textvariable=self.ip).pack(fill='x')
+        pt_k = tk.Frame(rivi, bg=PINTA)
+        pt_k.pack(side='left', padx=(8, 0))
+        pieni_otsikko(pt_k, t('portti')).pack(fill='x')
+        ttk.Entry(pt_k, textvariable=self.portti, width=7).pack()
+        pieni_otsikko(s, t('salasana')).pack(fill='x', pady=(6, 0))
+        pwr = tk.Frame(s, bg=PINTA)
+        pwr.pack(fill='x', pady=(0, 8))
+        self.pw_kentta = ttk.Entry(pwr, textvariable=self.salasana, show='•')
+        self.pw_kentta.pack(side='left', fill='x', expand=True)
+        silma = tk.Label(pwr, text='👁', bg=PANEELI, fg=TEKSTI2, font=('Segoe UI Emoji', 11),
+                         width=3, cursor='hand2', highlightthickness=1,
+                         highlightbackground=REUNA2)
+        silma.pack(side='left', padx=(6, 0), fill='y')
+        # silmä: salasana näkyy vain niin kauan kuin hiiren painike on pohjassa
+        silma.bind('<ButtonPress-1>', lambda e: (self.pw_kentta.configure(show=''),
+                                                 silma.configure(fg=KOROSTE)))
+        silma.bind('<ButtonRelease-1>', lambda e: (self.pw_kentta.configure(show='•'),
+                                                   silma.configure(fg=TEKSTI2)))
+        silma.bind('<Leave>', lambda e: (self.pw_kentta.configure(show='•'),
+                                         silma.configure(fg=TEKSTI2)))
+        ah = tk.Frame(s, bg=PINTA)
+        ah.pack(fill='x')
+        Nappi(ah, 'Autohost ON', lambda: self.ohjaus('/autohost on'), 'secondary', 36).pack(
+            side='left', fill='x', expand=True)
+        Nappi(ah, 'Autohost OFF', lambda: self.ohjaus('/autohost off'), 'secondary', 36).pack(
+            side='left', fill='x', expand=True, padx=(8, 0))
 
         def etiketti(vanhempi, **kw):
-            kw.setdefault('bg', KORTTI)
+            kw.setdefault('bg', PINTA)
             kw.setdefault('fg', TEKSTI)
             kw.setdefault('anchor', 'w')
             kw.setdefault('justify', 'left')
             return tk.Label(vanhempi, **kw)
 
-        ylos = tk.Frame(kortti, bg=KORTTI)
-        ylos.pack(fill='x', padx=10, pady=(8, 0))
-        self.sk_piste = etiketti(ylos, text='●', fg=HIMMEA, font=('Segoe UI', 12))
+        tila_k = kortti(sk)
+        tila_k.pack(fill='x', pady=(0, 10))
+        kortti_s = tila_k.sisa
+        otsikko(kortti_s, t('hosti_nyt')).pack(fill='x', pady=(0, 6))
+        ylos = tk.Frame(kortti_s, bg=PINTA)
+        ylos.pack(fill='x')
+        self.sk_piste = etiketti(ylos, text='●', fg=HIMMEA, font=F(12))
         self.sk_piste.pack(side='left')
-        self.sk_tila = etiketti(ylos, text=t('ei_yhteytta'), fg=TEKSTI2, font=('Segoe UI', 10, 'bold'))
+        self.sk_tila = etiketti(ylos, text=t('ei_yhteytta'), fg=TEKSTI2, font=F(10, True))
         self.sk_tila.pack(side='left', padx=(4, 0))
-        self.sk_host = etiketti(kortti, text=t('anna_ip'), font=('Segoe UI', 13, 'bold'),
-                                wraplength=340)
-        self.sk_host.pack(fill='x', padx=10)
-        self.sk_versio = etiketti(kortti, text='', fg=HIMMEA, font=('Segoe UI', 9))
-        self.sk_versio.pack(fill='x', padx=10)
-        keski = tk.Frame(kortti, bg=KORTTI)
-        keski.pack(fill='x', padx=10, pady=8)
-        self.sk_kuva = tk.Label(keski, bg=KORTTI)
+        self.sk_host = etiketti(kortti_s, text=t('anna_ip'), font=F(13, True), wraplength=330)
+        self.sk_host.pack(fill='x')
+        self.sk_versio = etiketti(kortti_s, text='', fg=HIMMEA, font=F(9))
+        self.sk_versio.pack(fill='x')
+        keski = tk.Frame(kortti_s, bg=PINTA)
+        keski.pack(fill='x', pady=8)
+        self.sk_kuva = tk.Label(keski, bg=PINTA)
         self.sk_kuva.pack(side='left')
-        tied = tk.Frame(keski, bg=KORTTI)
+        tied = tk.Frame(keski, bg=PINTA)
         tied.pack(side='left', fill='x', expand=True, padx=(10, 0))
-        self.sk_jarvi = etiketti(tied, text='', font=('Segoe UI', 12, 'bold'), wraplength=220)
+        self.sk_jarvi = etiketti(tied, text='', font=F(12, True), wraplength=210)
         self.sk_jarvi.pack(fill='x')
-        self.sk_peli = etiketti(tied, text='', fg=TEKSTI2, wraplength=220)
+        self.sk_peli = etiketti(tied, text='', fg=TEKSTI2, wraplength=210)
         self.sk_peli.pack(fill='x')
-        self.sk_aikaotsikko = etiketti(tied, text='', fg=HIMMEA, font=('Segoe UI', 9),
-                                       wraplength=220)
+        self.sk_aikaotsikko = etiketti(tied, text='', fg=HIMMEA, font=F(9), wraplength=210)
         self.sk_aikaotsikko.pack(fill='x', pady=(6, 0))
-        self.sk_aika = etiketti(tied, text='', fg=OK, font=('Segoe UI', 24, 'bold'))
+        self.sk_aika = etiketti(tied, text='', fg=OK, font=F(24, True))
         self.sk_aika.pack(fill='x')
-        self.sk_kuvaus = etiketti(kortti, text='', fg=TEKSTI2, wraplength=340)
-        self.sk_kuvaus.pack(fill='x', padx=10)
-        self.sk_pelaajat = etiketti(kortti, text='', fg=TEKSTI2, wraplength=340)
-        self.sk_pelaajat.pack(fill='x', padx=10, pady=(4, 10))
+        self.sk_kuvaus = etiketti(kortti_s, text='', fg=TEKSTI2, wraplength=330)
+        self.sk_kuvaus.pack(fill='x')
+        self.sk_pelaajat = etiketti(kortti_s, text='', fg=TEKSTI2, wraplength=330)
+        self.sk_pelaajat.pack(fill='x', pady=(4, 0))
 
-        ttk.Label(sk, text=t('hostin_loki'), foreground=KOROSTE,
-                  font=('Segoe UI', 9, 'bold')).pack(anchor='w', pady=(12, 2))
-        ttk.Checkbutton(sk, text=t('seuraa_chat'),
-                        variable=self.seuraa_chat).pack(anchor='w', pady=(0, 4))
-        lokiriv = ttk.Frame(sk)
+        loki_k = kortti(sk, venyta=True)
+        loki_k.pack(fill='both', expand=True)
+        ls = loki_k.sisa
+        otsikko(ls, t('hostin_loki')).pack(fill='x')
+        ttk.Checkbutton(ls, text=t('seuraa_chat'), variable=self.seuraa_chat).pack(
+            anchor='w', pady=(2, 6))
+        lokiriv = tk.Frame(ls, bg=PINTA)
         lokiriv.pack(fill='both', expand=True)
         self.loki = tk.Text(lokiriv, width=10, height=8, state='disabled', wrap='word',
                             font=('Consolas', 9), bg='#070d13', fg=TEKSTI, relief='flat',
@@ -438,162 +572,32 @@ class App(tk.Tk):
         self.loki.tag_configure('virhe', foreground=VIRHE)
         self.loki.tag_configure('tila', foreground=OK)
 
-        oikea = ttk.Frame(self, width=340)
-        oikea.pack(side='right', fill='y', padx=8, pady=8)
+    def _canvas_leveys(self, e, ikkuna_id):
+        self.canvas.itemconfigure(ikkuna_id, width=e.width)
+        n = max(1, e.width // (RUUTU_W + 8))
+        if n != self._sarakkeita:
+            self._sarakkeita = n
+            if getattr(self, '_sarake_ajastin', None):
+                self.after_cancel(self._sarake_ajastin)
+            self._sarake_ajastin = self.after(150, self._suodata)
 
-        ttk.Label(vasen, text=t('ylaotsikko'), foreground=KOROSTE,
-                  font=('Segoe UI', 9, 'bold')).pack(anchor='w')
-        ttk.Button(vasen, text=t('ohje_nappi'), command=self.avaa_ohje).place(relx=1.0, x=-22, y=2,
-                                                                           anchor='ne')
-        ttk.Button(vasen, text=t('kieli_nappi'), command=self.vaihda_kieli).place(
-            relx=1.0, x=-130, y=2, anchor='ne')
-        ttk.Label(vasen, text='Admin tool', foreground=TEKSTI,
-                  font=('Segoe UI', 24, 'bold')).pack(anchor='w')
-        ttk.Label(vasen, text=t('alaotsikko'), foreground=TEKSTI2, wraplength=640).pack(
-            anchor='w', pady=(0, 6))
-        ttk.Entry(vasen, textvariable=self.haku).pack(fill='x', pady=4)
-        ttk.Label(vasen, textvariable=self.maara, foreground=HIMMEA).pack(anchor='w')
-        kehys = ttk.Frame(vasen)
-        kehys.pack(fill='both', expand=True)
-        self.canvas = tk.Canvas(kehys, highlightthickness=0, bg=BG)
-        sb = ttk.Scrollbar(kehys, orient='vertical', command=self.canvas.yview)
-        self.ruudukko = ttk.Frame(self.canvas)
-        self.ruudukko.bind('<Configure>', lambda e: self.canvas.configure(
-            scrollregion=self.canvas.bbox('all')))
-        ikkuna_id = self.canvas.create_window((0, 0), window=self.ruudukko, anchor='nw')
-        self.canvas.bind('<Configure>', lambda e: self.canvas.itemconfigure(ikkuna_id, width=e.width))
-        self.canvas.configure(yscrollcommand=sb.set)
-        self.canvas.pack(side='left', fill='both', expand=True)
-        sb.pack(side='right', fill='y')
-        # hiiren rulla vierittää aina vain vesistölistaa, ei vaihda muita asetuksia
-        for tagi in ('all', 'TCombobox', 'Text'):
-            self.bind_class(tagi, '<MouseWheel>', self._rulla)
-        self._rakenna_ruudukko(JARVET)
-
-        # oikea paneeli
-        def ryhma(otsikko, arvot, var):
-            f = ttk.LabelFrame(oikea, text=otsikko)
-            f.pack(fill='x', **pad)
-            for k, nimi in arvot.items():
-                ttk.Radiobutton(f, text=nimi, value=k, variable=var).pack(
-                    side='left', padx=6, pady=2)
-            return f
-
-        ryhma(t('vuodenaika'), {k: vuodenaika_nimi(k) for k in VUODENAJAT}, self.vuodenaika)
-        self.aika_kehys = ryhma(t('vuorokaudenaika'), {k: aika_nimi(k) for k in AJAT}, self.aika)
-        ryhma(t('kesto'), {k: str(v) for k, v in KESTOT.items()}, self.kesto)
-
-        f = ttk.LabelFrame(oikea, text=t('pelimuoto'))
-        f.pack(fill='x', **pad)
-        self.muoto_cb = ttk.Combobox(f, textvariable=self.muoto, state='readonly')
-        self.muoto_cb.pack(fill='x', padx=6, pady=4)
-
-        f = ttk.LabelFrame(oikea, text=t('aloituspaikka'))
-        f.pack(fill='x', **pad)
-        self.paikka_cb = ttk.Combobox(f, textvariable=self.paikka, state='readonly')
-        self.paikka_cb.pack(fill='x', padx=6, pady=4)
-
-        f = ttk.LabelFrame(oikea, text=t('viehe_ryhma'))
-        f.pack(fill='x', **pad)
-        ttk.Label(f, text=t('vieheet')).pack(anchor='w', padx=6)
-        self.viehe_cb = ttk.Combobox(f, textvariable=self.viehetila, state='readonly',
-                                     values=[viehetila_nimi(k) for k in VIEHETILA_KOODIT])
-        self.viehe_cb.pack(fill='x', padx=6, pady=(0, 2))
-        self.viehe_valinta = ttk.Button(f, text=t('valitse_vieheet'), command=self.avaa_vieheet)
-        self.viehe_valinta.pack(fill='x', padx=6, pady=(0, 4))
-        ttk.Label(f, text=t('valiajat')).pack(anchor='w', padx=6)
-        ttk.Combobox(f, textvariable=self.tulokset, state='readonly',
-                     values=[tulos_nimi(k) for k in TULOS_KOODIT]).pack(fill='x', padx=6, pady=(0, 4))
-        ttk.Button(f, text=t('laheta_asetukset'), command=self.laheta_asetukset).pack(
-            fill='x', padx=6, pady=(0, 6))
-
-        f = ttk.LabelFrame(oikea, text=t('hosti_ryhma'))
-        f.pack(fill='x', **pad)
-        rivi = ttk.Frame(f)
-        rivi.pack(fill='x', padx=6, pady=(4, 0))
-        ip_k = ttk.Frame(rivi)
-        ip_k.pack(side='left', fill='x', expand=True)
-        ipr = tk.Frame(ip_k, bg=BG)
-        ipr.pack(fill='x')
-        ttk.Label(ipr, text=t('ip')).pack(side='left')
-        self.yht_teksti = tk.Label(ipr, text=t('ei_yhteytta'), bg=BG, fg=TEKSTI2,
-                                   font=('Segoe UI', 9))
-        self.yht_teksti.pack(side='right')
-        self.yht_piste = tk.Label(ipr, text='●', bg=BG, fg=VIRHE, font=('Segoe UI', 10))
-        self.yht_piste.pack(side='right', padx=(0, 3))
-        ttk.Entry(ip_k, textvariable=self.ip).pack(fill='x')
-        pt_k = ttk.Frame(rivi)
-        pt_k.pack(side='left', padx=(6, 0))
-        ttk.Label(pt_k, text=t('portti')).pack(anchor='w')
-        ttk.Entry(pt_k, textvariable=self.portti, width=7).pack()
-        ttk.Label(f, text=t('salasana')).pack(anchor='w', padx=6)
-        pwr = ttk.Frame(f)
-        pwr.pack(fill='x', padx=6, pady=(0, 4))
-        self.pw_kentta = ttk.Entry(pwr, textvariable=self.salasana, show='•')
-        self.pw_kentta.pack(side='left', fill='x', expand=True)
-        silma = tk.Label(pwr, text='👁', bg=PANEELI, fg=TEKSTI2, font=('Segoe UI Emoji', 11),
-                         width=3, cursor='hand2', highlightthickness=1,
-                         highlightbackground=REUNA2)
-        silma.pack(side='left', padx=(4, 0), fill='y')
-        # silmä: salasana näkyy vain niin kauan kuin hiiren painike on pohjassa
-        silma.bind('<ButtonPress-1>', lambda e: (self.pw_kentta.configure(show=''),
-                                                 silma.configure(fg=KOROSTE)))
-        silma.bind('<ButtonRelease-1>', lambda e: (self.pw_kentta.configure(show='•'),
-                                                   silma.configure(fg=TEKSTI2)))
-        silma.bind('<Leave>', lambda e: (self.pw_kentta.configure(show='•'),
-                                         silma.configure(fg=TEKSTI2)))
-        ah = ttk.Frame(f)
-        ah.pack(fill='x', padx=6, pady=(0, 6))
-        ttk.Button(ah, text='Autohost ON', command=lambda: self.ohjaus('/autohost on')).pack(
-            side='left', fill='x', expand=True)
-        ttk.Button(ah, text='Autohost OFF', command=lambda: self.ohjaus('/autohost off')).pack(
-            side='left', fill='x', expand=True, padx=(6, 0))
-        ttk.Label(oikea, text=t('komennot')).pack(anchor='w', padx=8)
-        self.esikatselu = tk.Text(oikea, height=6, width=40, state='disabled', wrap='char',
-                                  font=('Consolas', 10), bg='#070d13', fg=JAA,
-                                  relief='flat', padx=8, pady=6, highlightthickness=1,
-                                  highlightbackground=REUNA2, highlightcolor=REUNA2)
-        self.esikatselu.pack(fill='x', padx=8)
-
-        rivi = ttk.Frame(oikea)
-        rivi.pack(fill='x', padx=8, pady=8)
-        ttk.Button(rivi, text=t('laheta'), style='Laheta.TButton', command=self.laheta).pack(
-            side='left', fill='x', expand=True)
-        ttk.Button(rivi, text=t('kopioi'), command=self.kopioi).pack(side='left', padx=(6, 0))
-        ohj = ttk.Frame(oikea)
-        ohj.pack(fill='x', padx=8, pady=(0, 6))
-        ttk.Button(ohj, text=t('kaynnista'), style='Start.TButton',
-                   command=lambda: self.ohjaus('/start')).pack(
-            side='left', fill='x', expand=True)
-        ttk.Button(ohj, text=t('pysayta'), style='Stop.TButton',
-                   command=lambda: self.ohjaus('/stop')).pack(
-            side='left', fill='x', expand=True, padx=(6, 0))
-        ttk.Label(oikea, textvariable=self.status, wraplength=320,
-                  foreground=HIMMEA).pack(anchor='w', padx=8)
+    def _tiili(self, j, tila):
+        alateksti = t('aloituspaikkoja', n=len(j['paikat'])) if j['paikat'] else ''
+        return tiili(j['koodi'], j['nimi'], alateksti, os.path.join(JARVIKUVAT, j['koodi'] + '.png'),
+                     tila, RUUTU_W, RUUTU_H, kieli.nyk())
 
     def _rakenna_ruudukko(self, jarvet):
         for w in self.ruudukko.winfo_children():
             w.destroy()
         self.nappi.clear()
-        sarakkeita = 4
-        for c in range(sarakkeita):
-            self.ruudukko.columnconfigure(c, weight=1, uniform='v')
+        sarakkeita = self._sarakkeita
         for i, j in enumerate(jarvet):
-            teksti = j['nimi']
-            if j['paikat']:
-                teksti += '\n' + t('aloituspaikkoja', n=len(j['paikat']))
-            else:
-                teksti += '\n '
-            b = tk.Button(self.ruudukko, text=teksti, image=self._kuva(j), compound='top',
-                          relief='flat', bg=KORTTI, fg=TEKSTI, activebackground=KORTTI_HOVER,
-                          activeforeground='#ffffff', bd=0, wraplength=150, pady=6,
-                          highlightthickness=1, highlightbackground=REUNA,
-                          highlightcolor=KOROSTE,
-                          font=('Segoe UI', 10), cursor='hand2',
-                          command=lambda x=j: self._valitse(x))
+            b = tk.Label(self.ruudukko, image=self._tiili(j, 'normal'), bg=PINTA, bd=0,
+                         cursor='hand2')
+            b.bind('<Button-1>', lambda e, x=j: self._valitse(x))
             b.bind('<Enter>', lambda e, x=j: self._hover(x, True))
             b.bind('<Leave>', lambda e, x=j: self._hover(x, False))
-            b.grid(row=i // sarakkeita, column=i % sarakkeita, padx=3, pady=3, sticky='nsew')
+            b.grid(row=i // sarakkeita, column=i % sarakkeita, padx=3, pady=3)
             self.nappi[j['koodi']] = b
         self._korosta()
 
@@ -632,7 +636,7 @@ class App(tk.Tk):
             return
         w = self.viehe_ikkuna = tk.Toplevel(self)
         w.title(t('viehe_ikkuna'))
-        w.configure(bg=BG)
+        w.configure(bg=PINTA)
         w.transient(self)
         self.viehe_napit = {}
         self.laji_otsikot = {}
@@ -641,12 +645,11 @@ class App(tk.Tk):
         self.viehe_yht = tk.StringVar()
         ttk.Label(ylos, textvariable=self.viehe_yht, foreground=KOROSTE,
                   font=('Segoe UI', 11, 'bold')).pack(side='left')
-        ttk.Button(ylos, text=t('valmis_nappi'), command=w.destroy).pack(side='right')
-        ttk.Button(ylos, text=t('tyhjenna_kaikki'),
-                   command=lambda: self._aseta_vieheet(range(VIEHEITA), False)).pack(
-            side='right', padx=6)
-        ttk.Button(ylos, text=t('valitse_kaikki'),
-                   command=lambda: self._aseta_vieheet(range(VIEHEITA), True)).pack(side='right')
+        Nappi(ylos, t('valmis_nappi'), w.destroy, 'primary', 36, 90).pack(side='right')
+        Nappi(ylos, t('tyhjenna_kaikki'), lambda: self._aseta_vieheet(range(VIEHEITA), False),
+              'secondary', 36, 130).pack(side='right', padx=8)
+        Nappi(ylos, t('valitse_kaikki'), lambda: self._aseta_vieheet(range(VIEHEITA), True),
+              'secondary', 36, 130).pack(side='right')
         rivit = [ttk.Frame(w) for _ in range(3)]
         for r in rivit:
             r.pack(fill='x', padx=10, pady=4)
@@ -659,10 +662,10 @@ class App(tk.Tk):
             otsikko = tk.StringVar()
             self.laji_otsikot[nimi] = otsikko
             ttk.Label(kp, textvariable=otsikko, foreground=HIMMEA).pack(side='left')
-            ttk.Button(kp, text=t('tyhjenna'), width=9, command=lambda a=alku, m=maara:
-                       self._aseta_vieheet(range(a, a + m), False)).pack(side='right')
-            ttk.Button(kp, text=t('valitse_kaikki'), width=13, command=lambda a=alku, m=maara:
-                       self._aseta_vieheet(range(a, a + m), True)).pack(side='right', padx=4)
+            Nappi(kp, t('tyhjenna'), lambda a=alku, m=maara: self._aseta_vieheet(range(a, a + m), False),
+                  'secondary', 30, 90, 9).pack(side='right')
+            Nappi(kp, t('valitse_kaikki'), lambda a=alku, m=maara: self._aseta_vieheet(range(a, a + m), True),
+                  'secondary', 30, 130, 9).pack(side='right', padx=6)
             rivi = ttk.Frame(laatikko)
             rivi.pack(padx=4, pady=4)
             for i in range(maara):
@@ -740,16 +743,15 @@ class App(tk.Tk):
         self._korosta()
 
     def _korosta(self):
-        for koodi, b in self.nappi.items():
-            valittu = koodi == self.jarvi['koodi']
-            b.configure(bg=VALITTU if valittu else KORTTI,
-                        highlightbackground=KOROSTE if valittu else REUNA,
-                        font=('Segoe UI', 10, 'bold' if valittu else 'normal'))
+        for j in JARVET:
+            b = self.nappi.get(j['koodi'])
+            if b is not None:
+                b.configure(image=self._tiili(j, 'valittu' if j['koodi'] == self.jarvi['koodi'] else 'normal'))
 
     def _hover(self, jarvi, sisalla):
         b = self.nappi.get(jarvi['koodi'])
         if b and jarvi['koodi'] != self.jarvi['koodi']:
-            b.configure(bg=KORTTI_HOVER if sisalla else KORTTI)
+            b.configure(image=self._tiili(jarvi, 'hover' if sisalla else 'normal'))
 
     # ---- logiikka
     def _valitse(self, jarvi):
